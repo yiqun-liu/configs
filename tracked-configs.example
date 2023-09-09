@@ -1,0 +1,10 @@
+#!/usr/bin/bash
+
+# This script describes how subdirectories of this meta repo maps to functional config directories
+# in the system.
+
+mappings=(
+	"nvim           $HOME/.config/nvim"
+	"tmux           $HOME/.config/tmux"
+)
+
