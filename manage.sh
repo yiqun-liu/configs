@@ -11,7 +11,7 @@ then
 	exit -1
 fi
 
-track_config_path=$repo_dir/tracked_configs
+track_config_path=$repo_dir/tracked-configs
 if ! test -e $track_config_path
 then
 	echo "Tracked configs not found. Please put configurations at path $track_config_path."
@@ -37,17 +37,21 @@ do
 		cp -r $config_dir $repo_config_dir
 	elif test $order == "deploy"
 	then
-		read -p "deploy: $config_name --> $config_dir? (y/n)" choice
-		while test $choice != 'y' && $choice != 'n'
+		read -p "deploy: $config_name --> $config_dir? (y/n) " choice
+		while test $choice != 'y' && test $choice != 'n'
 		do
 			echo "Invalid choice: enter 'y' to confirm or 'n' to skip."
-			read -p "deploy: $config_name --> $config_dir? (y/n)" choice
+			read -p "deploy: $config_name --> $config_dir? (y/n) " choice
 		done
 
 		if test $choice == 'y'
 		then
-			cp -r $repo_config_dir $config_dir
-			echo "deployed: $config_name --> $config_dir? (y/n)"
+			# -T is necessary, otherwise when $config_dir exists, $repo_config_dir will
+			# beome a *sub*directory of $config_dir.
+			cp -r -T $repo_config_dir $config_dir
+			echo "copied: $config_name --> $config_dir"
+		else
+			echo "skipped: $config_name"
 		fi
 	fi
 done

@@ -1,4 +1,4 @@
 # do not include machine-specific information
-tracked_configs
+tracked-configs
 
 nvim/plugin
