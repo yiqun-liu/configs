@@ -1,5 +1,9 @@
 -- confiurations of a static parser - improve highlighting and indentation.
 
+-- Download the parser through git whenever possible.
+-- This helps in situation where proxy has been set for git (almost always set) but not for curl.
+require'nvim-treesitter.install'.prefer_git = true
+
 require'nvim-treesitter.configs'.setup {
   -- A list of parser names, or "all" (the five listed parsers should always be installed)
   ensure_installed = { "comment", "c", "cpp", "python", "markdown" },
