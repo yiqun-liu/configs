@@ -60,6 +60,8 @@ local capabilities = require('cmp_nvim_lsp').default_capabilities()
 lspconfig.clangd.setup{capabilities = capabilities}
 -- python-lsp-server for Python
 lspconfig.pylsp.setup{capabilities = capabilities}
+-- rust-analyzer for Rust
+lspconfig.rust_analyzer.setup{capabilities = capabilities}
 
 -- Global mappings.
 -- See `:help vim.diagnostic.*` for documentation on any of the below functions

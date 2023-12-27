@@ -1,12 +1,14 @@
 -- confiurations of a static parser - improve highlighting and indentation.
 
--- Download the parser through git whenever possible.
--- This helps in situation where proxy has been set for git (almost always set) but not for curl.
+-- see nvim-treesitter issue 1888
+-- By default nvim-treesitter would use curl to download parsers. Setting up proxy from curl is not
+-- as easy as it for git. This option makes parser downloading easier when network connection is
+-- limited. To debug: run TSInstallSync or TSUpdateSync.
 require'nvim-treesitter.install'.prefer_git = true
 
 require'nvim-treesitter.configs'.setup {
   -- A list of parser names, or "all" (the five listed parsers should always be installed)
-  ensure_installed = { "comment", "c", "cpp", "python", "markdown" },
+  ensure_installed = { "comment", "c", "cpp", "rust", "python", "markdown" },
 
   -- Install parsers synchronously (only applied to `ensure_installed`)
   sync_install = false,

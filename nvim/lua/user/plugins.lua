@@ -43,4 +43,7 @@ packer.startup(function(use)
 	-- auto-completion: recommendation maker & its adaptor
 	use {'L3MON4D3/LuaSnip', run = 'make install_jsregexp'}
 	use 'saadparwaiz1/cmp_luasnip'
+
+	-- colorscheme
+	use {'catppuccin/nvim', as = 'catppuccin'}
 end)

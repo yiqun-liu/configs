@@ -24,3 +24,6 @@ vim.opt.splitright = true
 
 -- use true colors - so that we could have have visual effects such as "transparency"
 vim.opt.termguicolors = true
+
+-- colorscheme
+vim.cmd.colorscheme 'catppuccin'
