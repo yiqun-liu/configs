@@ -1,6 +1,2 @@
 require('user.remap')
-require('user.lsp')
 require('user.editor')
-require('user.toggleterm')
-require('user.bufferline')
-require('user.treesitter')

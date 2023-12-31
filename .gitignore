@@ -1,4 +1,5 @@
 # do not include machine-specific information
 tracked-configs
 
-nvim/plugin
+# nvim control file
+nvim/lazy-lock.json

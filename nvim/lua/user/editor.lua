@@ -1,7 +1,7 @@
 -- General settings for the editor
 
 -- diable mouse
-vim.opt.mouse = nil
+vim.opt.mouse = ""
 
 -- line number
 vim.opt.number = true
@@ -24,6 +24,3 @@ vim.opt.splitright = true
 
 -- use true colors - so that we could have have visual effects such as "transparency"
 vim.opt.termguicolors = true
-
--- colorscheme
-vim.cmd.colorscheme 'catppuccin'
