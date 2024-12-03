@@ -4,7 +4,8 @@
 # in the system.
 
 mappings=(
+	"vim		$HOME/.vimrc"
 	"nvim           $HOME/.config/nvim"
 	"tmux           $HOME/.config/tmux"
+	"clangd		$HOME/.config/clangd"
 )
-

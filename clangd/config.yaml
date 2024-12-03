@@ -1,0 +1,5 @@
+# for me, clangd is frequently used to build index for GCC-compiled projects. So I disable unknown
+# warnings and some GCC-specific options at the user level.
+CompileFlags:
+  Add: -Wno-unknown-warning-option
+  Remove: [-m*, -f*]

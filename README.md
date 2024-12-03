@@ -36,4 +36,5 @@ repo. We filter them out with the top level `.gitignore`.
 - Support single file config like `.gitconfig`, `.vimrc`.
 - Include a `.vimrc` file as a reasonble fallback.
 - nvim: consider how to manage project-local settings (indentations).
+- manage.sh diff
 
