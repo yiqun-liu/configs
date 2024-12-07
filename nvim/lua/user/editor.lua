@@ -3,8 +3,12 @@
 -- diable mouse
 vim.opt.mouse = ""
 
--- line number
+-- show absolute line number of current and relative line numbers for other lines
 vim.opt.number = true
+vim.opt.relativenumber = true
+
+-- highlight current line
+vim.opt.cursorline = true
 
 -- indentation
 vim.opt.smartindent = true

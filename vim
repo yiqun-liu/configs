@@ -1,7 +1,7 @@
 " highlight syntax
 syntax on
-" line number
-set number
+" line number (relative)
+set relativenumber
 " cursor position
 set ruler
 
@@ -18,17 +18,25 @@ set incsearch
 
 " keep a line margin while browsing
 set scrolloff=8
+
 " column marker
 set colorcolumn=100
 
 " automatic indentation
 set smartindent
 
+" auto complete file names in :e commands
+set wildmode=longest,list,full
+set wildmenu
+
 " vsplit on the right side
 set splitright
 
 " show the command we have typed in
 set showcmd
+
+" always show the status bar
+set laststatus=2
 
 " set default colorscheme
 colorscheme desert
