@@ -7,9 +7,11 @@ vim.keymap.set('n', '<leader>config', '<cmd>:cd ~/.config/nvim/<cr>:e ~/.config/
 vim.keymap.set('n', '<leader>notes', '<cmd>:cd ~/notes/<cr>:e ~/notes<cr>')
 vim.keymap.set('n', '<leader>code', '<cmd>:cd ~/code/<cr>:e ~/code<cr>')
 
--- switching from vertical splits
+-- switch between splits
 vim.keymap.set('n', '<A-h>', '<C-w>h')
+vim.keymap.set('n', '<A-j>', '<C-w>j')
 vim.keymap.set('n', '<A-l>', '<C-w>l')
+vim.keymap.set('n', '<A-k>', '<C-w>k')
 
 -- buffer manipulations
 vim.keymap.set('n', '<S-h>', '<cmd>bprev<cr>')
