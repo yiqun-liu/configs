@@ -13,6 +13,12 @@ vim.keymap.set('n', '<A-j>', '<C-w>j')
 vim.keymap.set('n', '<A-l>', '<C-w>l')
 vim.keymap.set('n', '<A-k>', '<C-w>k')
 
+-- move split boundaries
+vim.keymap.set('n', '<A-=>', '<C-w>+')
+vim.keymap.set('n', '<A-->', '<C-w>-')
+vim.keymap.set('n', '<A-.>', '<C-w><')
+vim.keymap.set('n', '<A-,>', '<C-w>>')
+
 -- buffer manipulations
 vim.keymap.set('n', '<S-h>', '<cmd>bprev<cr>')
 vim.keymap.set('n', '<S-l>', '<cmd>bnext<cr>')
