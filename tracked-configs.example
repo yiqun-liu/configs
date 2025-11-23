@@ -8,4 +8,6 @@ mappings=(
 	"nvim           $HOME/.config/nvim"
 	"tmux           $HOME/.config/tmux"
 	"clangd		$HOME/.config/clangd"
+	"aerc		$HOME/.config/aerc"
+	"mbsync		$HOME/.mbsyncrc"
 )

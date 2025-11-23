@@ -1,0 +1,29 @@
+# See man mbsync for details
+
+IMAPAccount dev@outlook
+Host outlook.office365.com
+Port 993
+User yiqun.liu.dev@outlook.com
+PassCmd "oama access yiqun.liu.dev@outlook.com"
+AuthMechs XOAUTH2
+SSLType IMAPS
+CertificateFile /etc/ssl/certs/ca-certificates.crt
+
+IMAPStore dev-remote
+Account dev@outlook
+
+MaildirStore dev-local
+Path ~/mails/dev/
+Inbox ~/mails/dev/INBOX
+# Clone the folder directory as is, without extra encoding
+SubFolders Verbatim
+
+Channel dev
+Far :dev-remote:
+Near :dev-local:
+# subfolder creation mapping is bidirectional
+Create Both
+# deletion is bidirectional (I guess this is safe only for our development mailbox)
+Expunge Both
+Patterns *
+SyncState *
