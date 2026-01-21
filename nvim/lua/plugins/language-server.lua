@@ -70,16 +70,16 @@ M.config = function()
   })
 
   -- Set up lspconfig.
-  local lspconfig = require('lspconfig')
-  local capabilities = require('cmp_nvim_lsp').default_capabilities()
-
   -- Enable nvim-cmp for each LSP server
   -- clangd for C/C++
-  lspconfig.clangd.setup{capabilities = capabilities}
+  vim.lsp.config('clangd', {})
+  vim.lsp.enable({'clangd'})
   -- python-lsp-server for Python
-  lspconfig.pylsp.setup{capabilities = capabilities}
+  vim.lsp.config('pylsp', {})
+  vim.lsp.enable({'pylsp'})
   -- rust-analyzer for Rust
-  lspconfig.rust_analyzer.setup{capabilities = capabilities}
+  vim.lsp.config('rust_analyzer', {})
+  vim.lsp.enable({'rust_analyzer'})
 
   -- Global mappings.
   -- See `:help vim.diagnostic.*` for documentation on any of the below functions
