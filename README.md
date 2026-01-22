@@ -1,40 +1,73 @@
 # Configurations
 
-A repo of Yiqun's personal configuration files. The goal is to make my configurable software behaves
-consistently on all machines. The `manage.sh` script could gather (for persisting) and distribute
-(for deployment) the configuration files from / to their working path.
+A repo of Yiqun's personal configuration files. The goal is to:
+- Make configurable software behave consistently across machines
+- Enable fast syncing across machines (Mac and Linux distributions)
 
-The configs mostly come from the official guide and demand-driven searching. Some ideas are taken
-from projects like [lazyVim](https://www.lazyvim.org/).
+## manage.sh
 
-## Usage
+The `manage.sh` script syncs configuration files with three commands:
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `./manage.sh collect` | Sync configs from system to repo |
+| `./manage.sh deploy` | Sync configs from repo to system |
+| `./manage.sh compare` | Show differences between repo and system |
+
+### collect
+
+Syncs current system configurations to the repository:
 
 ```bash
-# create a working copy
-cp tracked-configs.example tracked-configs
-
-# custmoize the file when necessary
-nvim tracked-configs
-
-# to persist local changes
 ./manage.sh collect
-# git push origin main
+```
 
-# to put the configs into effect
-# git pull origin main
+For each configured item, copies from the system path to the repo path.
+
+### deploy
+
+Deploys configurations from the repository to the system:
+
+```bash
 ./manage.sh deploy
 ```
 
-Remember that the configurations could have external dependencies. Take `nvim` as an example, we
-have to manually install the package manager (then download all packages) and the LSP servers.
+Prompts for confirmation before overwriting each config. Use `y` to deploy, `n` to skip.
 
-Sometimes there are compiled files or downloaded files which we would not like to persist in this
-repo. We filter them out with the top level `.gitignore`.
+### compare
 
-## TODO
+Shows differences between repository and system configurations:
 
-- Support single file config like `.gitconfig`, `.vimrc`.
-- Include a `.vimrc` file as a reasonble fallback.
-- nvim: consider how to manage project-local settings (indentations).
-- manage.sh diff
+```bash
+./manage.sh compare
+```
 
+- Uses `diff -u -r` with `--color=auto` for colored output
+- Respects `.gitignore` to skip ignored files
+- Handles both files (e.g., `.vimrc`) and directories (e.g., `.config/nvim`)
+- Shows "Only in system" or "Only in repo" for missing items
+
+## Setup
+
+```bash
+# 1. Copy example to create working tracked-configs
+cp tracked-configs.example tracked-configs
+
+# 2. Customize paths if needed
+nvim tracked-configs
+
+# 3. Deploy configs to system
+./manage.sh deploy
+
+# 4. After making changes on a machine, collect and commit
+./manage.sh collect
+git add -A && git commit -m "update configs"
+```
+
+## Notes
+
+- Configurations may have external dependencies (e.g., plugin managers, LSP servers)
+- Some files are filtered by `.gitignore` to avoid committing compiled or downloaded files
+- Works on both Linux and macOS
