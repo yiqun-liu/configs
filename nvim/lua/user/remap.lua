@@ -6,7 +6,10 @@ vim.keymap.set('n', '<leader>e', vim.cmd.Ex)
 vim.keymap.set('n', '<leader>config', '<cmd>:cd ~/.config/nvim/<cr>:e ~/.config/nvim/<cr>')
 vim.keymap.set('n', '<leader>notes', '<cmd>:cd ~/notes/<cr>:e ~/notes<cr>')
 vim.keymap.set('n', '<leader>code', '<cmd>:cd ~/code/<cr>:e ~/code<cr>')
+-- delete current file and close buffer
 vim.keymap.set('n', '<leader>rm', '<cmd>:call delete(expand(\'%:p\')) | bdelete!<cr>')
+-- reload all buffers from disk
+vim.keymap.set('n', '<leader>load', '<cmd>:bufdo e!<cr>')
 
 -- switch between splits
 vim.keymap.set('n', '<A-h>', '<C-w>h')
