@@ -2,6 +2,7 @@
 
 return {
   'nvim-treesitter/nvim-treesitter',
+  lazy = false,
   build = ':TSUpdate',
   config = function ()
     -- see nvim-treesitter issue 1888
