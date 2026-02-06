@@ -3,3 +3,4 @@ tracked-configs
 
 # nvim control file
 nvim/lazy-lock.json
+.DS_Store
