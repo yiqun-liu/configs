@@ -10,4 +10,5 @@ mappings=(
 	"clangd		$HOME/.config/clangd"
 	"aerc		$HOME/.config/aerc"
 	"mbsync		$HOME/.mbsyncrc"
+	"agent-configs/skills		$HOME/.agents/skills"
 )
