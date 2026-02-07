@@ -2,6 +2,8 @@
 
 # Color codes
 BLUE='\033[34m'
+YELLOW='\033[33m'
+GREEN='\033[32m'
 NC='\033[0m' # No Color
 
 # ============================================================================
@@ -107,12 +109,12 @@ do
 	then
 		# Note: read -p doesn't support colors, so use echo + read workaround
 		echo -en "${BLUE}deploy: $config_name --> $target_path? (y/n) ${NC}"
-		read choice
+		read -n 1 choice
 		while test $choice != 'y' && test $choice != 'n'
 		do
 			echo "Invalid choice: enter 'y' to confirm or 'n' to skip."
 			echo -en "${BLUE}deploy: $config_name --> $target_path? (y/n) ${NC}"
-			read choice
+		read -n 1 choice
 		done
 
 		if test $choice == 'y'
@@ -120,10 +122,11 @@ do
 			# When $target_path exists, direct copy will make $repo_path a
 			# *sub*directory of $target_path.
 			# Portable: remove target first, then copy (cp -T is GNU-only)
+			mkdir -p "$(dirname "$target_path")"
 			rm -rf "$target_path" && cp -r "$repo_path" "$target_path"
-			echo -e "${BLUE}copied: $config_name --> $target_path${NC}"
+			echo -e "  ${GREEN}✓ copied: $config_name${NC}"
 		else
-			echo -e "${BLUE}skipped: $config_name${NC}"
+			echo -e "  ${YELLOW}✗ skipped: $config_name${NC}"
 		fi
 	elif test $order == "compare"
 	then
