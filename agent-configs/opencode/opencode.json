@@ -12,6 +12,19 @@
           "name": "MiniMax-M2.1"
         }
       }
+    },
+    "volcengine": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "volcengine",
+      "options": {
+        "baseURL": "https://ark.cn-beijing.volces.com/api/v3",
+        "apiKey": "{env:VOLCENGINE_API_KEY}"
+      },
+      "models": {
+        "{env:VOLCENGINE_END_POINT_ID}": {
+          "name": "GLM-4.7-{env:VOLCENGINE_END_POINT_ID}"
+        }
+      }
     }
   },
   "mcp": {
