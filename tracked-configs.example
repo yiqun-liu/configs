@@ -12,4 +12,5 @@ mappings=(
 	"mbsync		$HOME/.mbsyncrc"
 	"agent-configs/skills	$HOME/.agents/skills"
 	"agent-configs/opencode/opencode.json	$HOME/.config/opencode/opencode.json"
+	"agent-configs/AGENTS.md	$HOME/.config/opencode/AGENTS.md"
 )
