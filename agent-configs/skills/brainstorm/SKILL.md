@@ -30,7 +30,9 @@ Also look up the internet for related projects and ideas. Search early (after un
 - Once you believe you understand what you're building, present the design
 - Break it into sections of 200-300 words
 - Ask after each section whether it looks right so far
-- Cover architecture, components, data flow, error handling, testing if it is a programming project
+- If it is a programming project: cover architecture, components, data flow, error handling, testing
+- If it is NOT a programming project: cover objectives, scope, ideas or methods, milestones, risks
+- Output format may be: design doc, decision memo, or action plan
 - Be ready to go back and clarify if something doesn't make sense
 
 **Research and inspiration:**
@@ -45,9 +47,13 @@ Also look up the internet for related projects and ideas. Search early (after un
 **Documentation:**
 - Write the validated design to `docs/plans/YYYY-MM-DD-<topic>-design.md`
 
-**Implementation (if it is a programming project):**
-- Ask: "Ready to set up for implementation?"
-- Use write-coding-plans to create detailed implementation plan
+**Implementation (only for programming projects):**
+- First evaluate the modification scope (small/medium/significant)
+- For small modifications: skip detailed implementation planning, ask user if ready to implement directly
+- For medium/large modifications: use write-coding-plans to create detailed implementation plan
+
+**What next (for non-programming work):**
+- Ask user what they want to do next: deeper analysis, writing, research, or move to execution
 
 ## Recording Ruled-Out Options
 
@@ -66,7 +72,7 @@ Keep explanations short (1-2 sentences). This prevents re-hashing decisions late
 
 - **One question at a time** - Don't overwhelm with multiple questions
 - **Multiple choice preferred** - Easier to answer than open-ended when possible
-- **YAGNI ruthlessly** - Remove unnecessary features from all designs
+- **YAGNI ruthlessly** - Remove unnecessary features from all coding project designs
 - **Explore alternatives** - Always propose 2-3 approaches before settling
 - **Incremental validation** - Present design in sections, validate each
 - **Be flexible** - Go back and clarify when something doesn't make sense

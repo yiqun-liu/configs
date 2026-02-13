@@ -2,6 +2,11 @@
 
 Global instructions for general purpose AI agents.
 
+## Scope
+
+- Global instructions apply to all sessions
+- Project-level instructions (in `.opencode/agents/`) may override these when necessary
+
 ## Personal Preferences
 
 ### Communication Style
