@@ -28,10 +28,10 @@ Also look up the internet for related projects and ideas. Search early (after un
 
 **Presenting the design:**
 - Once you believe you understand what you're building, present the design
-- Break it into sections of 200-300 words
+- Respect the structure described below.
+- Keep number of words of each sections within 300 words
+- Do not include obvious fact or trivial design choice
 - Ask after each section whether it looks right so far
-- If it is a programming project: cover architecture, components, data flow, error handling, testing
-- If it is NOT a programming project: cover objectives, scope, ideas or methods, milestones, risks
 - Output format may be: design doc, decision memo, or action plan
 - Be ready to go back and clarify if something doesn't make sense
 
@@ -40,7 +40,52 @@ Also look up the internet for related projects and ideas. Search early (after un
 - Look for: similar projects, patterns, anti-patterns, well-designed examples
 - Present findings as comparison: "X did A which is similar, but they chose B because..."
 - Quote specific techniques but always link back to user's goals
-- If nothing relevant exists, say so—this is valuable signal too
+- If nothing relevant exists or the search fails, say so
+
+## Document Structure
+
+```markdown
+# [Project / Module Name] Design Doc
+
+## Goals
+
+[bullet points about the goals or motivations]
+
+## Architecture
+
+[The key design ideas or paradigms applied in the design]
+
+### [Components (for multi-component project) or Functions (for simple project)]
+
+[bullet points for each components or functions]
+[if there are 5+ components or functions, create a text graphics or mermaid graph to describe their relationship]
+
+### Work Flow
+
+[mermaid sequence graph which summarizes the interactions between components]
+
+## Methods
+
+### Data Structure Design Considerations
+[This secton only applies for proramming projects]
+
+### [Key Process N]
+
+[2-3 sentences to describe the sub proecsses]
+
+[Key ideas, algorithms (for programming projects)]
+
+## Validation
+
+[key test cases for programming projects, validation-follow-ups for non-programming projects]
+
+## References
+
+**Related Works**
+[bullet points about popular related projects or practices]
+[key third-party dependencies for programming projects]
+
+```
 
 ## After the Design
 
@@ -50,7 +95,7 @@ Also look up the internet for related projects and ideas. Search early (after un
 **Implementation (only for programming projects):**
 - First evaluate the modification scope (small/medium/significant)
 - For small modifications: skip detailed implementation planning, ask user if ready to implement directly
-- For medium/large modifications: use write-coding-plans to create detailed implementation plan
+- For medium/large modifications: use write-coding-plans skill to create detailed implementation plan
 
 **What next (for non-programming work):**
 - Ask user what they want to do next: deeper analysis, writing, research, or move to execution
@@ -72,7 +117,6 @@ Keep explanations short (1-2 sentences). This prevents re-hashing decisions late
 
 - **One question at a time** - Don't overwhelm with multiple questions
 - **Multiple choice preferred** - Easier to answer than open-ended when possible
-- **YAGNI ruthlessly** - Remove unnecessary features from all coding project designs
 - **Explore alternatives** - Always propose 2-3 approaches before settling
 - **Incremental validation** - Present design in sections, validate each
 - **Be flexible** - Go back and clarify when something doesn't make sense

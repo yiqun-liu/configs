@@ -7,7 +7,7 @@ description: Use when you have a spec or requirements for a multi-step task, bef
 
 ## Overview
 
-Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
+Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. Each task should only do one thing but do it well. DRY. YAGNI. TDD.
 
 Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
 
@@ -15,14 +15,23 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
 
+## Initial evaluation
+
+- Read README.md and design documents in docs/ if not have done so already.
+- Evaluate whether the task can be automatically compiled and tested.
+  - For example, some projects which require priviledged operation cannot be tested by agents. If so, ask human partner to test when a task has been done
+
 ## Bite-Sized Task Granularity
 
 **Each step is one action (2-5 minutes):**
 - "Write the failing test" - step
-- "Run it to make sure it fails" - step
+  - if some existing tests are affected, update and include them as failing tests
+- "Run failing to make sure it fails" - step
+  - if the task cannot be run directly by agent, ask them to do so
 - "Implement the minimal code to make the test pass" - step
 - "Run the tests and make sure they pass" - step
-- "Commit" - step
+  - if the task cannot be run directly by agent, ask them to do so
+- "Present to them and let them do the commit"
 
 ## Plan Document Header
 
@@ -31,11 +40,14 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 ```markdown
 # [Feature Name] Implementation Plan
 
-> Use execute-coding-plans to implement this plan task-by-task.
+> An implementation plan which is friendly to execute-coding-plans skill.
+
+[design documents (relative path) this plan is based on]
 
 **Goal:** [One sentence describing what this builds]
 
-**Architecture:** [2-3 sentences about approach]
+**Prerequisite**
+[bullet points about the dependences / prerequisite]
 
 **Tech Stack:** [Key technologies/libraries]
 
@@ -48,17 +60,15 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 ### Task N: [Component Name]
 
 **Files:**
+- One-sentence description (commit message): implement / refactor xxx
 - Create: `exact/path/to/file.py`
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
 
-**Step 1: Write the failing test**
+**Step 1: Write / Update the failing test**
 
-```python
-def test_specific_behavior():
-    result = function(input)
-    assert result == expected
-```
+[test objects: which aspects the function / interface to test (e.g. basic function, boundaries, for function foo)]
+[optional, include only core test code for demonstration]
 
 **Step 2: Run test to verify it fails**
 
@@ -67,10 +77,9 @@ Expected: FAIL with "function not defined"
 
 **Step 3: Write minimal implementation**
 
-```python
-def function(input):
-    return expected
-```
+[the interface and behavior description (or changes in descriptions), one for each function]
+
+[implementation draft with pseudocode and file references (do what change in what files)]
 
 **Step 4: Run test to verify it passes**
 
@@ -79,22 +88,20 @@ Expected: PASS
 
 **Step 5: Commit**
 
-```bash
-git add tests/path/test.py src/path/file.py
-git commit -sm "feat: add specific feature"
-```
+Present to your human partner and let user do the commit
 ```
 
 ## Remember
 - Exact file paths always
-- Complete code in plan (not "add validation")
+- pseudocode code in plan to reduce potential cross-session handoff loss
 - Exact commands with expected output
-- Reference relevant skills with @ syntax
 - DRY, YAGNI, TDD, frequent commits
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice:
+After saving the plan, list the one-line commit message for each task and ask for refinement instructions.
+
+When they approve the task decomposition, offer execution choice:
 
 **"Plan complete and saved to `docs/plans/<filename>.md`. Two execution options:**
 

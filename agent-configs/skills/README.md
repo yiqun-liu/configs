@@ -21,6 +21,14 @@ Copyright (c) 2025 Jesse Vincent (https://github.com/obra/superpowers)
 
 - `capture-knowledge/` - New skill for memo creation
 
+## TODO
+
+walk-through-codebase: analyze codebase, identify key workflows and architecture
+debug-assist: offer background information and do debug logging to review (change skills in notes to consume it)
+create-study-plan: monthly study
+language-check: check human partners expressions in the session
+record-todo / record-new-word
+
 ## License
 
 See [LICENSE](LICENSE) for full MIT license text.
