@@ -114,7 +114,7 @@ do
 		do
 			echo "Invalid choice: enter 'y' to confirm or 'n' to skip."
 			echo -en "${BLUE}deploy: $config_name --> $target_path? (y/n) ${NC}"
-		read -n 1 choice
+			read -n 1 choice
 		done
 
 		if test $choice == 'y'
