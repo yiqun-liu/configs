@@ -8,6 +8,8 @@ Some skills are derived from [obra/superpowers](https://github.com/obra/superpow
 
 Copyright (c) 2025 Jesse Vincent (https://github.com/obra/superpowers)
 
+Some skills are derived from [anthropics/skills](https://github.com/anthropics/anthropic-skills), licensed under Apache 2.0.
+
 ## Skills Customized from Superpowers
 
 - `brainstorm/` - Original: `brainstorming`
@@ -16,6 +18,10 @@ Copyright (c) 2025 Jesse Vincent (https://github.com/obra/superpowers)
 - `subagent-driven-development/` - Original: `subagent-driven-development`
 - `test-driven-development/` - Original: `test-driven-development`
 - `code-review/` - Combined `finishing-a-development-branch` + `requesting-code-review`
+
+## Skills from Anthropic
+
+- `skill-creator/` - Apache 2.0 licensed guide for creating effective skills
 
 ## Custom Skills
 
