@@ -5,6 +5,7 @@
 
 mappings=(
 	"vim		$HOME/.vimrc"
+	"git            $HOME/.config/git"
 	"nvim           $HOME/.config/nvim"
 	"tmux           $HOME/.config/tmux"
 	"clangd		$HOME/.config/clangd"
