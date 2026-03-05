@@ -1,0 +1,17 @@
+{
+    "vim.handleKeys": { "<C-p>": false },
+    "vim.normalModeKeyBindingsNonRecursive": [
+        {
+            "before": ["g", "r"],
+            "commands": [
+                { "command": "editor.action.goToReferences" }
+            ]
+        },
+        {
+            "before": ["g", "D"],
+            "commands": [
+                { "command": "editor.action.revealDeclaration" }
+            ]
+        }
+    ]
+}

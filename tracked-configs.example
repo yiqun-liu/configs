@@ -14,4 +14,6 @@ mappings=(
 	"agent-configs/skills	$HOME/.agents/skills"
 	"agent-configs/opencode/opencode.json	$HOME/.config/opencode/opencode.json"
 	"agent-configs/AGENTS.md	$HOME/.config/opencode/AGENTS.md"
+	"vscode/settings.json		$HOME/.config/Code/User/settings.json"
+	"vscode/keybindings.json	$HOME/.config/Code/User/keybindings.json"
 )
