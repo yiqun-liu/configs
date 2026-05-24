@@ -1,0 +1,4 @@
+interface:
+  display_name: "Document to Markdown"
+  short_description: "Convert documents to LLM-friendly Markdown"
+  default_prompt: "Use $document-to-markdown to convert this PDF into clean Markdown."
