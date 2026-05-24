@@ -28,6 +28,21 @@ Write the test first. Watch it fail. Write minimal code to pass.
 
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
+## Preflight - Understand the Test Surface
+
+Before writing a test:
+- Check the current status of relevant tests when practical.
+- Look for existing examples that show where tests belong, naming patterns, fixtures, helpers, and commands.
+- Prefer the project's explicit test rules and nearby conventions over inventing a new structure.
+
+If there are no existing test examples, or no explicit project rule for where this test should go, stop and propose:
+- The test location
+- The test style/framework
+- The verification command
+- Why this fits the codebase
+
+Ask your human partner for confirmation before creating the test.
+
 ## The Iron Law
 
 ```
@@ -345,8 +360,20 @@ Can't check all boxes? You skipped TDD. Start over.
 |---------|----------|
 | Don't know how to test | Write wished-for API. Write assertion first. Ask your human partner. |
 | Test too complicated | Design too complicated. Simplify interface. |
-| Must mock everything | Code too coupled. Use dependency injection. |
-| Test setup huge | Extract helpers. Still complex? Simplify design. |
+| Must mock everything | Code too coupled. Consider dependency injection, but ask your human partner before changing production architecture. |
+| Test setup huge | Extract test helpers. If production structure must change, ask your human partner first. |
+
+## Testability and Architecture Changes
+
+Hard-to-test code is useful design feedback, but do not silently change production architecture only to make a test possible.
+
+When meaningful testing requires changing visibility, extracting internals, adding dependency injection, introducing interfaces, or otherwise altering production structure:
+- Judge whether the change improves long-term design, not just test access.
+- Prefer testing public behavior when it gives decent confidence.
+- Avoid adding test-only production APIs.
+- Be conservative about production changes whose only purpose is testing.
+- If the architecture change seems worthwhile, explain the tradeoff and ask your human partner for confirmation before making it.
+- If the change is not clearly worthwhile, propose the best lower-impact test strategy instead.
 
 ## Debugging Integration
 
