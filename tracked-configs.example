@@ -1,19 +1,103 @@
-#!/usr/bin/bash
-
-# This script describes how subdirectories of this meta repo maps to functional config directories
-# in the system.
-
-mappings=(
-	"vim		$HOME/.vimrc"
-	"git            $HOME/.config/git"
-	"nvim           $HOME/.config/nvim"
-	"tmux           $HOME/.config/tmux"
-	"clangd		$HOME/.config/clangd"
-	"aerc		$HOME/.config/aerc"
-	"mbsync		$HOME/.mbsyncrc"
-	"agent-configs/skills	$HOME/.agents/skills"
-	"agent-configs/opencode/opencode.json	$HOME/.config/opencode/opencode.json"
-	"agent-configs/AGENTS.md	$HOME/.config/opencode/AGENTS.md"
-	"vscode/settings.json		$HOME/.config/Code/User/settings.json"
-	"vscode/keybindings.json	$HOME/.config/Code/User/keybindings.json"
-)
+{
+  "$schema": "./tools/config-manager/tracked-configs.schema.json",
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "vim",
+      "source": "vim",
+      "method": "copy",
+      "targets": [
+        "~/.vimrc"
+      ]
+    },
+    {
+      "id": "git",
+      "source": "git",
+      "method": "copy",
+      "targets": [
+        "~/.config/git",
+        "D:/software/MSYS2/home/yliu/.config/git"
+      ]
+    },
+    {
+      "id": "nvim",
+      "source": "nvim",
+      "method": "copy",
+      "targets": [
+        "~/.config/nvim"
+      ]
+    },
+    {
+      "id": "tmux",
+      "source": "tmux",
+      "method": "copy",
+      "targets": [
+        "~/.config/tmux"
+      ]
+    },
+    {
+      "id": "clangd",
+      "source": "clangd",
+      "method": "copy",
+      "targets": [
+        "~/.config/clangd"
+      ]
+    },
+    {
+      "id": "aerc",
+      "source": "aerc",
+      "method": "copy",
+      "targets": [
+        "~/.config/aerc"
+      ]
+    },
+    {
+      "id": "mbsync",
+      "source": "mbsync",
+      "method": "copy",
+      "targets": [
+        "~/.mbsyncrc"
+      ]
+    },
+    {
+      "id": "agent-skills",
+      "source": "agent-configs/skills",
+      "method": "link",
+      "targets": [
+        "~/.agents/skills"
+      ]
+    },
+    {
+      "id": "opencode-config",
+      "source": "agent-configs/opencode/opencode.json",
+      "method": "copy",
+      "targets": [
+        "~/.config/opencode/opencode.json"
+      ]
+    },
+    {
+      "id": "opencode-agents",
+      "source": "agent-configs/AGENTS.md",
+      "method": "copy",
+      "targets": [
+        "~/.config/opencode/AGENTS.md"
+      ]
+    },
+    {
+      "id": "vscode-settings",
+      "source": "vscode/settings.json",
+      "method": "copy",
+      "targets": [
+        "~/.config/Code/User/settings.json"
+      ]
+    },
+    {
+      "id": "vscode-keybindings",
+      "source": "vscode/keybindings.json",
+      "method": "copy",
+      "targets": [
+        "~/.config/Code/User/keybindings.json"
+      ]
+    }
+  ]
+}

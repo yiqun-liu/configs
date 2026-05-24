@@ -2,29 +2,34 @@
 
 A repo of Yiqun's personal configuration files. The goal is to:
 - Make configurable software behave consistently across machines
-- Enable fast syncing across machines (Mac and Linux distributions)
+- Enable fast syncing across Windows, macOS, and Linux machines
 
-## manage.sh
+## Config Manager
 
-The `manage.sh` script syncs configuration files with three commands:
+The `manage.sh` and `manage.ps1` wrappers call the cross-platform Python config
+manager at `tools/config-manager/manage.py`.
+
+The tool syncs configuration files with these commands:
 
 ### Commands
 
 | Command | Description |
 |---------|-------------|
-| `./manage.sh collect` | Sync configs from system to repo |
-| `./manage.sh deploy` | Sync configs from repo to system |
+| `./manage.sh list` | Show configured mappings |
 | `./manage.sh compare` | Show differences between repo and system |
+| `./manage.sh deploy` | Sync configs from repo to system |
+| `./manage.sh collect` | Sync copy-managed configs from system to repo |
 
 ### collect
 
-Syncs current system configurations to the repository:
+Syncs machine configurations to the repository:
 
 ```bash
 ./manage.sh collect
 ```
 
-For each configured item, copies from the system path to the repo path.
+For each copy-managed item, copies from the system path to the repo path. Link
+entries are validated but not copied because the repo source is canonical.
 
 ### deploy
 
@@ -34,7 +39,9 @@ Deploys configurations from the repository to the system:
 ./manage.sh deploy
 ```
 
-Prompts for confirmation before overwriting each config. Use `y` to deploy, `n` to skip.
+Prompts for confirmation before deploying each config. Use `y` to deploy, `n`
+to skip. Use `--dry-run` to validate and preview actions without modifying
+files.
 
 ### compare
 
@@ -44,21 +51,20 @@ Shows differences between repository and system configurations:
 ./manage.sh compare
 ```
 
-- Uses `diff -u -r` with `--color=auto` for colored output
-- Respects `.gitignore` to skip ignored files
 - Handles both files (e.g., `.vimrc`) and directories (e.g., `.config/nvim`)
-- Shows "Only in system" or "Only in repo" for missing items
+- Checks link targets for link-managed entries
+- Shows missing or different paths
 
 ## Setup
 
 ```bash
-# 1. Copy example to create working tracked-configs
-cp tracked-configs.example tracked-configs
+# 1. Review tracked-configs.json and customize targets if needed
+nvim tracked-configs.json
 
-# 2. Customize paths if needed
-nvim tracked-configs
+# 2. Preview deployment
+./manage.sh deploy --dry-run
 
-# 3. Deploy configs to system
+# 3. Deploy configs
 ./manage.sh deploy
 
 # 4. After making changes on a machine, collect and commit
@@ -70,4 +76,4 @@ git add -A && git commit -m "update configs"
 
 - Configurations may have external dependencies (e.g., plugin managers, LSP servers)
 - Some files are filtered by `.gitignore` to avoid committing compiled or downloaded files
-- Works on both Linux and macOS
+- Works on Windows, Linux, and macOS
