@@ -90,7 +90,14 @@ Also look up the internet for related projects and ideas. Search early (after un
 ## After the Design
 
 **Documentation:**
-- Write the validated design to `docs/plans/YYYY-MM-DD-<topic>-design.md`
+- Keep both draft and validated working designs under `.tmp/agent/designs/` unless the user asks to persist them elsewhere
+- Name temporary incremental-feature designs as `.tmp/agent/designs/YYYY-MM-DD-<topic>-design.md`
+- Try to persist the final design when it is useful beyond the current session
+- To persist a design:
+  1. Think from the future reader's perspective and refrain from using ambiguous terms like "current"
+  2. Look for existing documents that cover the same scope and update them to match the validated design
+  3. If no covering document exists, mimic the repository's current documentation convention and create a new design document there
+  4. If there are no examples or rules to follow, propose a persistent path and ask the user whether to keep that version
 
 **Implementation (only for programming projects):**
 - First evaluate the modification scope (small/medium/significant)

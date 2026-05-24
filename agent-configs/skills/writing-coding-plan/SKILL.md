@@ -13,7 +13,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using the write-coding-plan skill to create the implementation plan."
 
-**Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
+**Save execution-only plans to:** `.tmp/agent/plans/YYYY-MM-DD-<feature-name>.md`
 
 ## Initial evaluation
 
@@ -103,7 +103,7 @@ After saving the plan, list the one-line commit message for each task and ask fo
 
 When they approve the task decomposition, offer execution choice:
 
-**"Plan complete and saved to `docs/plans/<filename>.md`. Two execution options:**
+**"Plan complete and saved to `.tmp/agent/plans/<filename>.md`. Two execution options:**
 
 **1. Subagent-Driven (this session)** - I dispatch fresh subagent per task, review between tasks, fast iteration
 

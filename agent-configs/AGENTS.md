@@ -22,6 +22,11 @@ Global instructions for general purpose AI agents.
 - When user proposes approaches: objectively evaluate pros/cons and proactively suggest optimizations
 - Be strict with the architecture (of text or code), check if the names picked by users matched its meaning within the context
 
+### Temporary Files
+- Repositories may use `.tmp/` as a git-ignored, repo-local directory for temporary files
+- Agent intermediate files like one-time execution plan or review findings belong under `.tmp/agent/`
+- Do not place durable documentation or source changes under `.tmp/`
+
 ### Research & Information
 - Proactively use `webfetch` and web search to improve results and present research as comparisons with trade-offs
 - If the agent senses it lacks sufficient information, proactively ask the user for clarification or missing details
