@@ -24,6 +24,7 @@ Options:
 | Option | Applies To | Meaning |
 | --- | --- | --- |
 | `--id ID` | all commands | Operate on one entry id; may be repeated |
+| `--color auto\|always\|never` | `compare` | Colorize unified diffs; defaults to `auto` |
 | `--dry-run` | `deploy`, `collect` | Validate and print planned changes without prompting or modifying files |
 | `--json` | `list` | Print machine-readable JSON |
 
@@ -33,6 +34,7 @@ Examples:
 python tools/config-manager/manage.py list
 python tools/config-manager/manage.py deploy --dry-run
 python tools/config-manager/manage.py deploy --id agent-skills
+python tools/config-manager/manage.py compare --color always --id tmux
 python tools/config-manager/manage.py compare --id opencode-config --id codex-agents
 ```
 
@@ -58,6 +60,8 @@ manage.ps1  -> python tools/config-manager/manage.py @args
 `deploy` and `collect` are interactive by default. Each selected target asks for
 confirmation before changing files. Answer `y` to run the action or `n` to skip
 that target.
+
+Unchanged copy-managed entries are skipped automatically without prompting.
 
 Use `tracked-configs.json` at the repo root:
 

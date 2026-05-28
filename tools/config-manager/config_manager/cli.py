@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .compare import compare_entry, compare_to_operation
-from .model import ConfigError, load_entries
+from .model import ConfigError, ResolvedTarget, load_entries
 from .operations import (
     OperationResult,
     collect_copy,
@@ -17,7 +17,7 @@ from .operations import (
 from .output import print_entries, print_results
 from .paths import resolve_entries
 from .planner import filter_by_id
-from .platform import get_platform_ops
+from .platform import PlatformOps, get_platform_ops
 
 
 def main(repo_root: Path, argv: Sequence[str] | None = None) -> int:
@@ -41,12 +41,15 @@ def main(repo_root: Path, argv: Sequence[str] | None = None) -> int:
 
     if args.command == "compare":
         results = [compare_to_operation(compare_entry(entry, platform)) for entry in selected]
-        print_results(results)
+        print_results(results, color=args.color)
         return exit_code(results)
 
     if args.command == "deploy":
         results = []
         for entry in selected:
+            if unchanged_copy(entry, platform):
+                results.append(no_difference_result(entry))
+                continue
             if not args.dry_run and not confirm_action("deploy", entry):
                 results.append(OperationResult("SKIP", entry.id, entry.target, "skipped by user"))
                 continue
@@ -67,6 +70,9 @@ def main(repo_root: Path, argv: Sequence[str] | None = None) -> int:
     if args.command == "collect":
         results = []
         for entry in selected:
+            if unchanged_copy(entry, platform):
+                results.append(no_difference_result(entry))
+                continue
             if not args.dry_run and not confirm_action("collect", entry):
                 results.append(OperationResult("SKIP", entry.id, entry.target, "skipped by user"))
                 continue
@@ -91,6 +97,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     compare_parser = subparsers.add_parser("compare", help="compare sources and targets")
     add_common_filters(compare_parser)
+    compare_parser.add_argument(
+        "--color",
+        choices=("auto", "always", "never"),
+        default="auto",
+        help="colorize unified diffs",
+    )
 
     deploy_parser = subparsers.add_parser("deploy", help="deploy sources to targets")
     add_common_filters(deploy_parser)
@@ -105,6 +117,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def add_common_filters(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--id", action="append", help="operate on one entry id; may be repeated")
+
+
+def unchanged_copy(entry: ResolvedTarget, platform: PlatformOps) -> bool:
+    return entry.method == "copy" and compare_entry(entry, platform).level == "OK"
+
+
+def no_difference_result(entry: ResolvedTarget) -> OperationResult:
+    return OperationResult("SKIP", entry.id, entry.target, "no differences")
 
 
 def exit_code(results) -> int:
