@@ -8,21 +8,21 @@
         "apiKey": "{env:MINIMAX_API_KEY}"
       },
       "models": {
-        "MiniMax-M2.5": {
-          "name": "MiniMax-M2.5"
+        "MiniMax-M2.7": {
+          "name": "MiniMax-M2.7"
         }
       }
     },
-    "volcengine": {
+    "csi-provider": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "volcengine",
+      "name": "csi.ai",
       "options": {
-        "baseURL": "https://ark.cn-beijing.volces.com/api/v3",
-        "apiKey": "{env:VOLCENGINE_API_KEY}"
+        "baseURL": "http://113.46.219.251:8080/v1/",
+        "apiKey": "{env:CSI_API_KEY}"
       },
       "models": {
-        "{env:VOLCENGINE_END_POINT_ID}": {
-          "name": "GLM-4.7-{env:VOLCENGINE_END_POINT_ID}"
+        "GLM-5.1": {
+          "name": "GLM-5.1"
         }
       }
     }
