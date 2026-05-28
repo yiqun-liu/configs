@@ -20,7 +20,7 @@
         "when": "vim.mode == 'Normal' && editorTextFocus"
     },
     {
-        "key": "\\ r m",
+        "key": "\\ r n",
         "command": "editor.action.rename",
         "when": "vim.mode == 'Normal' && editorTextFocus"
     }
