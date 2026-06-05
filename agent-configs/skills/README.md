@@ -27,6 +27,7 @@ Some skills are derived from [anthropics/skills](https://github.com/anthropics/a
 ## Custom Skills
 
 - `capture-knowledge/` - New skill for memo creation
+- `git-history-cleanup/` - Rewrite messy branches into clean commit stacks using worktree isolation
 
 ## TODO
 
