@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: "Verify tests, propose commit messages, and optionally dispatch code review subagent after completing tasks"
+description: "Engineering review for code, diffs, branches, tests, technical design docs, API docs, configuration, scripts, and agent skill files. Use when the user asks to review technical work for bugs, regressions, unclear behavior, architectural risks, or missing tests. Also use after implementation work to verify tests, summarize changes, and prepare a commit-ready handoff. Do not use for general prose, non-technical writing, marketing copy, personal documents, or language-only review."
 ---
 
 # Code Review
