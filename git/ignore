@@ -1,8 +1,15 @@
-# Visual Studio Code
-.vscode
+# Repo-local temporary files
+.tmp/
 
 # MacOS
 .DS_Store
 
-# Repo-local temporary files
-.tmp/
+# Applitcation Configurations
+## Visual Studio Code
+.vscode
+
+## Codex
+.codex
+
+## Claude
+**/.claude/settings.local.json
