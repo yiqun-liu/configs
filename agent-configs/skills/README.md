@@ -18,6 +18,7 @@ Some skills are derived from [anthropics/skills](https://github.com/anthropics/a
 - `subagent-driven-development/` - Original: `subagent-driven-development`
 - `test-driven-development/` - Original: `test-driven-development`
 - `code-review/` - Combined `finishing-a-development-branch` + `requesting-code-review`
+- `using-git-worktrees/` - Original: `using-git-worktrees`
 
 ## Skills from Anthropic
 
