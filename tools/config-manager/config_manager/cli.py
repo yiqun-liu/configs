@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from typing import Sequence
 
-from .compare import compare_entry, compare_to_operation
+from .compare import compare_entry, compare_entry_oneline, compare_to_operation
 from .model import ConfigError, ResolvedTarget, load_entries
 from .operations import (
     OperationResult,
@@ -14,7 +14,7 @@ from .operations import (
     ensure_link,
     validate_link,
 )
-from .output import print_entries, print_results
+from .output import print_entries, print_oneline_results, print_results
 from .paths import resolve_entries
 from .planner import filter_by_id
 from .platform import PlatformOps, get_platform_ops
@@ -40,6 +40,10 @@ def main(repo_root: Path, argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "compare":
+        if args.oneline:
+            results = [compare_entry_oneline(entry, platform) for entry in selected]
+            print_oneline_results(results)
+            return exit_code(results)
         results = [compare_to_operation(compare_entry(entry, platform)) for entry in selected]
         print_results(results, color=args.color)
         return exit_code(results)
@@ -103,6 +107,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto",
         help="colorize unified diffs",
     )
+    compare_parser.add_argument("--oneline", action="store_true", help="show per-file diff counts instead of full diffs")
 
     deploy_parser = subparsers.add_parser("deploy", help="deploy sources to targets")
     add_common_filters(deploy_parser)
@@ -120,7 +125,7 @@ def add_common_filters(parser: argparse.ArgumentParser) -> None:
 
 
 def unchanged_copy(entry: ResolvedTarget, platform: PlatformOps) -> bool:
-    return entry.method == "copy" and compare_entry(entry, platform).level == "OK"
+    return entry.method == "copy" and compare_entry(entry, platform).level == "SAME"
 
 
 def no_difference_result(entry: ResolvedTarget) -> OperationResult:
@@ -128,6 +133,6 @@ def no_difference_result(entry: ResolvedTarget) -> OperationResult:
 
 
 def exit_code(results) -> int:
-    if any(result.level == "ERROR" for result in results):
+    if any(result.level == "MISS" for result in results):
         return 1
     return 0

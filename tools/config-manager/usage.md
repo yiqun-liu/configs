@@ -27,6 +27,7 @@ Options:
 | `--color auto\|always\|never` | `compare` | Colorize unified diffs; defaults to `auto` |
 | `--dry-run` | `deploy`, `collect` | Validate and print planned changes without prompting or modifying files |
 | `--json` | `list` | Print machine-readable JSON |
+| `--oneline` | `compare` | Show per-file diff counts (`+N/−M`) instead of full unified diffs |
 
 Examples:
 
@@ -36,6 +37,7 @@ python tools/config-manager/manage.py deploy --dry-run
 python tools/config-manager/manage.py deploy --id agent-skills
 python tools/config-manager/manage.py compare --color always --id tmux
 python tools/config-manager/manage.py compare --id opencode-config --id codex-agents
+python tools/config-manager/manage.py compare --oneline
 ```
 
 ## Entry Point

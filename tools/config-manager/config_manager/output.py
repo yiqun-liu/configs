@@ -4,6 +4,7 @@ import json
 import sys
 from typing import Literal, TextIO
 
+from .compare import OnelineResult
 from .model import ResolvedTarget
 from .operations import OperationResult
 
@@ -79,3 +80,56 @@ def colorize_unified_diff_line(line: str) -> str:
 
 def colored(text: str, color: str) -> str:
     return f"{color}{text}{RESET}"
+
+
+MINUS = "\u2212"
+
+
+def _format_fd(fd: FileDiff, width: int) -> str:
+    if fd.kind == "diff":
+        return f"{fd.path:<{width}} +{fd.added}/{MINUS}{fd.removed}"
+    return f"{fd.path:<{width}} {fd.kind}"
+
+
+def _file_path_width(files: tuple[FileDiff, ...]) -> int:
+    if not files:
+        return 0
+    return max(len(fd.path) for fd in files) + 2
+
+
+def print_oneline_results(
+    results: list[OnelineResult],
+    *,
+    stream: TextIO | None = None,
+) -> None:
+    output = stream if stream is not None else sys.stdout
+    total_added = 0
+    total_removed = 0
+    diff_count = 0
+    miss_count = 0
+
+    for result in results:
+        if result.level == "SAME":
+            print(f"SAME  {result.id} → {result.target}", file=output)
+        elif result.level == "DIFF":
+            diff_count += 1
+            width = _file_path_width(result.files)
+            print(f"DIFF  {result.id} → {result.target}:", file=output)
+            for fd in result.files:
+                total_added += fd.added
+                total_removed += fd.removed
+                print(f"        {_format_fd(fd, width)}", file=output)
+        elif result.level == "MISS":
+            miss_count += 1
+            print(f"MISS  {result.id} → {result.target}: {result.message}", file=output)
+        elif result.level == "WARN":
+            print(f"WARN  {result.id} → {result.target}: {result.message}", file=output)
+
+    parts: list[str] = []
+    if diff_count:
+        parts.append(f"+{total_added}/{MINUS}{total_removed} across {diff_count} entries")
+    if miss_count:
+        suffix = "s" if miss_count > 1 else ""
+        parts.append(f"{miss_count} miss{suffix}")
+    if parts:
+        print(f"\n{', '.join(parts)}", file=output)
