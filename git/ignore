@@ -13,3 +13,6 @@
 
 ## Claude
 **/.claude/settings.local.json
+
+## Personal agent instruction not shared with collaborators
+.AGENTS.md

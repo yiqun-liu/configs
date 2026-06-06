@@ -5,7 +5,8 @@ Global instructions for general purpose AI agents.
 ## Scope
 
 - Global instructions apply to all sessions
-- Project-level instructions (in `.opencode/agents/`) may override these when necessary
+- Repo-level instructions (`AGENTS.md` at repo root) convey project-specific conventions (usually tracked by git and maintained by all collaborators)
+- Repo-level personal extented instructions (`.AGENTS.md` at repo root, ignored by `~/.config/git/ignore`) allow per-repo customization without leaking to collaborators
 
 ## Personal Preferences
 
@@ -26,6 +27,10 @@ Global instructions for general purpose AI agents.
 - Repositories may use `.tmp/` as a git-ignored, repo-local directory for temporary files
 - Agent intermediate files like one-time execution plan or review findings belong under `.tmp/agent/`
 - Do not place durable documentation or source changes under `.tmp/`
+
+### Documentation Respect
+- Always read and respect top-level `README.md` and other human-facing documentation
+- When a development plan would break or contradict documented behavior, explicitly ask the user for confirmation before proceeding
 
 ### Research & Information
 - Proactively use `webfetch` and web search to improve results and present research as comparisons with trade-offs
