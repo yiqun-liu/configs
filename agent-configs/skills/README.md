@@ -10,6 +10,8 @@ Copyright (c) 2025 Jesse Vincent (https://github.com/obra/superpowers)
 
 Some skills are derived from [anthropics/skills](https://github.com/anthropics/anthropic-skills), licensed under Apache 2.0.
 
+The review skill set (design-review alone for now) is inspired by [awesome-skills/code-review-skill](https://github.com/awesome-skills/code-review-skill) and [sanyuan0704/sanyuan-skills](https://github.com/sanyuan0704/sanyuan-skills), both licensed under MIT.
+
 ## Skills Customized from Superpowers
 
 - `brainstorm/` - Original: `brainstorming`
@@ -17,7 +19,7 @@ Some skills are derived from [anthropics/skills](https://github.com/anthropics/a
 - `execute-coding-plans/` - Original: `executing-plans`
 - `subagent-driven-development/` - Original: `subagent-driven-development`
 - `test-driven-development/` - Original: `test-driven-development`
-- `code-review/` - Combined `finishing-a-development-branch` + `requesting-code-review`
+- `design-review/` - Review design plans and architecture proposals
 - `using-git-worktrees/` - Original: `using-git-worktrees`
 
 ## Skills from Anthropic
