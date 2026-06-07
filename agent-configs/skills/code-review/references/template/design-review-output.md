@@ -1,21 +1,21 @@
-# Output Format — Design Review
+# Design Review Output Template
 
-Output template, clean review protocol, and next steps for design review
-findings.
+Present this format when the preset is Design Doc (document-only mode).
+Omit "Strengths", severity subsections, "Recommended Alternative",
+or "Open Questions" sections when empty — do not leave placeholder
+headers.
 
 ---
-
-## Output Template
 
 ```markdown
 ## Design Review
 
-**Artifact reviewed**: [plan name / spec / implementation only]
+**Artifact reviewed**: [plan name / spec / document path]
 **Scope**: [modules / features covered]
 **Design understanding sources**:
 - Design doc: [found: path] / [not found — inferred from implementation]
-- Interface doc: [found: path] / [not found] / [not applicable — internal change]
-- Change description: [commit message] / [PR description] / [user prompt]
+- Interface doc: [found: path] / [not found] / [not applicable]
+- Change description: [source]
 
 **Document availability issue**: [flag if design doc was missing — Medium finding]
 
@@ -24,10 +24,10 @@ findings.
 ### Design Understanding
 
 [Summary of the design being reviewed. Clearly label each part as
-"from design doc" or "inferred from implementation".]
+"from design document" or "inferred from implementation".]
 
-[For multi-module changes: include logical view as text diagram or
-mermaid. For simple changes: prose is sufficient.]
+[For multi-module designs: include logical view as text diagram or
+mermaid. For simple designs: prose is sufficient.]
 
 ---
 
@@ -47,11 +47,6 @@ mermaid. For simple changes: prose is sufficient.]
 
 #### Low
 [Minor cleanup opportunities — optional]
-
-**For each finding:**
-- What the issue is
-- Why it matters in this context
-- Suggested resolution (if not obvious)
 
 ### Open Questions
 [Things the reviewer couldn't assess without more context]
@@ -74,33 +69,7 @@ Omit this section entirely if no alternative is clearly better.]
 
 ---
 
-## Clean Review Protocol
-
-If no meaningful findings exist, state explicitly:
-
-```markdown
-## Design Review
-
-**Artifact reviewed**: [name]
-**Scope**: [what was assessed]
-**Design understanding sources**:
-- Design doc: [found: path] / [not found — inferred from implementation]
-- Change description: [source]
-
-No significant findings. The design addresses all stated requirements,
-follows sound architectural principles, and integrates cleanly with the
-existing system.
-
-**Not covered**: [anything the reviewer couldn't assess]
-**Residual risks**: [any low-probability concerns worth noting]
-```
-
-Never invent findings to fill a review. "No issues found" is a valid
-and honest outcome.
-
----
-
-## Next Steps Confirmation
+## Next Steps
 
 After presenting findings, offer structured options:
 
@@ -111,5 +80,3 @@ How would you like to proceed?
 3. Revise specific items (tell me which)
 4. Proceed as-is
 ```
-
-Do not implement any design revisions until the user explicitly chooses.
