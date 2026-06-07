@@ -4,13 +4,12 @@ Agent skills for opencode CLI.
 
 ## Origin
 
-Some skills are derived from [obra/superpowers](https://github.com/obra/superpowers), licensed under MIT.
+Some skills are derived from the following sources:
 
-Copyright (c) 2025 Jesse Vincent (https://github.com/obra/superpowers)
-
-Some skills are derived from [anthropics/skills](https://github.com/anthropics/anthropic-skills), licensed under Apache 2.0.
-
-The review skill set (design-review alone for now) is inspired by [awesome-skills/code-review-skill](https://github.com/awesome-skills/code-review-skill) and [sanyuan0704/sanyuan-skills](https://github.com/sanyuan0704/sanyuan-skills), both licensed under MIT.
+- [obra/superpowers](https://github.com/obra/superpowers) — MIT (Copyright © 2025–2026 Jesse Vincent)
+- [awesome-skills/code-review-skill](https://github.com/awesome-skills/code-review-skill) — MIT (Copyright © 2025 tt-a1i)
+- [sanyuan0704/sanyuan-skills](https://github.com/sanyuan0704/sanyuan-skills) — MIT (Copyright © 2025 sanyuan0704)
+- [anthropics/skills](https://github.com/anthropics/skills) — Apache 2.0
 
 ## Skills Customized from Superpowers
 
@@ -19,17 +18,22 @@ The review skill set (design-review alone for now) is inspired by [awesome-skill
 - `execute-coding-plans/` - Original: `executing-plans`
 - `subagent-driven-development/` - Original: `subagent-driven-development`
 - `test-driven-development/` - Original: `test-driven-development`
-- `design-review/` - Review design plans and architecture proposals
 - `using-git-worktrees/` - Original: `using-git-worktrees`
 
 ## Skills from Anthropic
 
 - `skill-creator/` - Apache 2.0 licensed guide for creating effective skills
 
+## Skills from Multiple Source
+
+- `code-review/` - Customized from `obra/superpowers/code-review`, `awesome-skills/code-review-skill`, `sanyuan0704/sanyuan-skills`
+
 ## Custom Skills
 
 - `capture-knowledge/` - New skill for memo creation
 - `git-history-cleanup/` - Rewrite messy branches into clean commit stacks using worktree isolation
+- `check-user-prompts/` - Review and polish the user's writing from a session
+- `document-to-markdown/` - Convert documents (PDF, Word, etc.) into clean, LLM-friendly Markdown
 
 ## TODO
 
