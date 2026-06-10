@@ -43,6 +43,19 @@
         "MINIMAX_API_HOST": "https://api.minimaxi.com"
       },
       "enabled": true
+    },
+    "zhipu-web-search": {
+      "type": "remote",
+      "url": "https://open.bigmodel.cn/api/mcp-broker/proxy/web-search/mcp?Authorization={env:ZHIPU_API_KEY}",
+      "enabled": true
+    },
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp",
+      "headers": {
+        "x-api-key": "{env:EXA_API_KEY}"
+      },
+      "enabled": true
     }
   }
 }

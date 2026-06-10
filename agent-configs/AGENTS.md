@@ -35,3 +35,19 @@ Global instructions for general purpose AI agents.
 ### Research & Information
 - Proactively use `webfetch` and web search to improve results and present research as comparisons with trade-offs
 - If the agent senses it lacks sufficient information, proactively ask the user for clarification or missing details
+
+### Web Search Preference Order
+
+Follow this cascading order when searching the web. Escalate to the next option only if the current one returns no results, irrelevant results, or an error.
+
+**Chinese-language search:**
+
+1. `MiniMax_web_search` — free, first choice
+2. `zhipu-web-search` `webSearchStd` — 0.01 CNY/search, basic coverage
+3. `zhipu-web-search` `webSearchPro` or `webSearchQuark` — 0.03-0.05 CNY/search, heavier fallback
+
+**Non-Chinese search:**
+
+1. Built-in web search from global providers (e.g., built-in search from the current provider like Gemini/OpenAI/native codex search) — first choice
+2. `exa` — Exa.ai MCP (`web_search_exa`, `web_fetch_exa`), high-quality English content
+3. Search tools from Chinese providers (`MiniMax_web_search`, `zhipu-web-search`) — last resort; Chinese providers have smaller non-Chinese search coverage
