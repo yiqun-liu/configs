@@ -46,6 +46,20 @@ Standard backend, local PDF:
 python .\scripts\document_to_markdown.py ".\input.pdf" --out-dir ".\.tmp\agent\document-markdown" --ocr --language ch
 ```
 
+Standard backend, local PDF when MinerU result downloads fail behind Clash/TUN:
+
+If `HTTPS_PROXY` or `HTTP_PROXY` is set in the environment, the script uses it automatically. Otherwise pass `--proxy` explicitly:
+
+```powershell
+python .\scripts\document_to_markdown.py ".\input.pdf" --out-dir ".\.tmp\agent\document-markdown" --ocr --language ch --proxy http://127.0.0.1:7899
+```
+
+If the failure is specific to `cdn-mineru.openxlab.org.cn`, add a temporary real-IP override gathered from trusted DNS:
+
+```powershell
+python .\scripts\document_to_markdown.py ".\input.pdf" --out-dir ".\.tmp\agent\document-markdown" --ocr --language ch --proxy http://127.0.0.1:7899 --resolve cdn-mineru.openxlab.org.cn=8.222.80.133,8.222.82.255
+```
+
 Standard backend, URL with page range:
 
 ```powershell
@@ -78,3 +92,5 @@ Prefer handing downstream agents the `full.md` path plus the original file path.
 ## References
 
 Read `references/mineru-api.md` only when you need current MinerU backend endpoint details, limits, parameter names, or error-code guidance.
+
+Read `references/mineru-troubleshooting.md` when MinerU upload, polling, or result download fails, especially on Windows machines using Clash Verge Rev, TUN mode, fake-ip DNS, or local HTTP/SOCKS proxy ports.

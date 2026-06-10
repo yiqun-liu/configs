@@ -9,6 +9,8 @@ import json
 import os
 import re
 import shutil
+import socket
+import ssl
 import sys
 import time
 import urllib.error
@@ -106,12 +108,14 @@ def upload_file(upload_url: str, path: Path, timeout: int = 300) -> None:
         connection.putheader("Host", parsed.netloc)
         connection.putheader("Content-Length", str(path.stat().st_size))
         connection.endheaders()
+        if connection.sock is None:
+            raise MinerUError(f"Upload connection to {parsed.netloc} was not established")
         with path.open("rb") as handle:
             shutil.copyfileobj(handle, connection.sock.makefile("wb", buffering=0))
         response = connection.getresponse()
         status = response.status
         detail = response.read().decode("utf-8", errors="replace")
-    except OSError as exc:
+    except (OSError, AttributeError) as exc:
         raise MinerUError(f"Upload failed: {exc}") from exc
     finally:
         connection.close()
@@ -119,17 +123,184 @@ def upload_file(upload_url: str, path: Path, timeout: int = 300) -> None:
         raise MinerUError(f"Upload failed with HTTP {status}: {detail}")
 
 
-def download(url: str, path: Path, timeout: int = 300) -> None:
+def parse_resolve_entries(entries: list[str] | None) -> dict[str, list[str]]:
+    mapping: dict[str, list[str]] = {}
+    for entry in entries or []:
+        if "=" not in entry:
+            raise MinerUError(f"--resolve must use host=ip1,ip2 syntax: {entry}")
+        host, values = entry.split("=", 1)
+        host = host.strip().lower()
+        ips = [value.strip() for value in values.split(",") if value.strip()]
+        if not host or not ips:
+            raise MinerUError(f"--resolve must use host=ip1,ip2 syntax: {entry}")
+        mapping[host] = ips
+    return mapping
+
+
+def proxy_host_port(proxy: str) -> tuple[str, int]:
+    parsed = urllib.parse.urlparse(proxy)
+    if parsed.scheme not in {"http", "https"}:
+        raise MinerUError(f"Only http(s) proxies are supported for resolved downloads: {proxy}")
+    if not parsed.hostname or not parsed.port:
+        raise MinerUError(f"Proxy must include host and port: {proxy}")
+    return parsed.hostname, parsed.port
+
+
+def effective_proxy(explicit: str | None) -> str | None:
+    if explicit is not None:
+        return explicit or None
+    for key in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"):
+        value = os.environ.get(key)
+        if value:
+            return value
+    return None
+
+
+def download_via_resolved_connect(
+    url: str,
+    path: Path,
+    proxy: str,
+    ips: list[str],
+    timeout: int,
+    attempts: int,
+) -> None:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise MinerUError(f"Resolved CONNECT fallback only supports https URLs: {url}")
+    host = parsed.hostname
+    port = parsed.port or 443
+    target = parsed.path or "/"
+    if parsed.query:
+        target = f"{target}?{parsed.query}"
+    proxy_host, proxy_port = proxy_host_port(proxy)
+    tmp_path = path.with_suffix(path.suffix + ".part")
+    last_error: Exception | None = None
+
+    for attempt in range(1, attempts + 1):
+        ip = ips[(attempt - 1) % len(ips)]
+        try:
+            sock = socket.create_connection((proxy_host, proxy_port), timeout=timeout)
+            tls_wrapped = False
+            try:
+                connect = (
+                    f"CONNECT {ip}:{port} HTTP/1.1\r\n"
+                    f"Host: {ip}:{port}\r\n"
+                    "Proxy-Connection: Keep-Alive\r\n\r\n"
+                ).encode("ascii")
+                sock.sendall(connect)
+                response = b""
+                while b"\r\n\r\n" not in response:
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        break
+                    response += chunk
+                status_line = response.split(b"\r\n", 1)[0]
+                if b" 200 " not in status_line:
+                    raise MinerUError(f"Proxy CONNECT failed: {status_line.decode('ascii', errors='replace')}")
+
+                context = ssl.create_default_context()
+                with context.wrap_socket(sock, server_hostname=host) as tls:
+                    tls_wrapped = True
+                    request = (
+                        f"GET {target} HTTP/1.1\r\n"
+                        f"Host: {host}\r\n"
+                        "User-Agent: document-to-markdown/1.0\r\n"
+                        "Accept: */*\r\n"
+                        "Connection: close\r\n\r\n"
+                    ).encode("ascii")
+                    tls.sendall(request)
+                    raw = b""
+                    while b"\r\n\r\n" not in raw:
+                        chunk = tls.recv(4096)
+                        if not chunk:
+                            break
+                        raw += chunk
+                    header_bytes, _, body = raw.partition(b"\r\n\r\n")
+                    status = header_bytes.split(b"\r\n", 1)[0]
+                    if b" 200 " not in status:
+                        raise MinerUError(f"Download GET failed: {status.decode('ascii', errors='replace')}")
+                    content_length: int | None = None
+                    for hdr_line in header_bytes.split(b"\r\n")[1:]:
+                        if hdr_line.lower().startswith(b"content-length:"):
+                            content_length = int(hdr_line.split(b":", 1)[1].strip())
+                            break
+                    with tmp_path.open("wb") as handle:
+                        written = 0
+                        if body:
+                            handle.write(body)
+                            written += len(body)
+                        while True:
+                            chunk = tls.recv(1024 * 1024)
+                            if not chunk:
+                                break
+                            handle.write(chunk)
+                            written += len(chunk)
+                if content_length is not None and written != content_length:
+                    raise MinerUError(f"Truncated download: expected {content_length} bytes, got {written}")
+            except Exception:
+                if not tls_wrapped:
+                    sock.close()
+                raise
+            tmp_path.replace(path)
+            return
+        except Exception as exc:
+            last_error = exc
+            time.sleep(min(2 * attempt, 10))
+
+    raise MinerUError(f"Resolved CONNECT download failed after {attempts} attempts: {last_error}")
+
+
+def download(
+    url: str,
+    path: Path,
+    timeout: int = 300,
+    attempts: int = 5,
+    proxy: str | None = None,
+    resolve: dict[str, list[str]] | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with urllib.request.urlopen(url, timeout=timeout) as response:
-            with path.open("wb") as handle:
-                shutil.copyfileobj(response, handle)
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise MinerUError(f"Download failed with HTTP {exc.code}: {detail}") from exc
-    except urllib.error.URLError as exc:
-        raise MinerUError(f"Download failed: {exc.reason}") from exc
+    tmp_path = path.with_suffix(path.suffix + ".part")
+    last_error: Exception | None = None
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({"http": proxy, "https": proxy}) if proxy else urllib.request.ProxyHandler({})
+    )
+
+    for attempt in range(1, attempts + 1):
+        resume_from = tmp_path.stat().st_size if tmp_path.exists() else 0
+        headers = {}
+        if resume_from:
+            headers["Range"] = f"bytes={resume_from}-"
+        request = urllib.request.Request(url, headers=headers)
+        try:
+            with opener.open(request, timeout=timeout) as response:
+                if resume_from and response.status == 200:
+                    resume_from = 0
+                mode = "ab" if resume_from and response.status == 206 else "wb"
+                with tmp_path.open(mode) as handle:
+                    while True:
+                        chunk = response.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        handle.write(chunk)
+            tmp_path.replace(path)
+            return
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            last_error = MinerUError(f"HTTP {exc.code}: {detail}")
+            if exc.code not in {408, 429, 500, 502, 503, 504}:
+                tmp_path.unlink(missing_ok=True)
+                break
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError, ssl.SSLError) as exc:
+            last_error = exc
+        time.sleep(min(2 * attempt, 10))
+
+    parsed = urllib.parse.urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if proxy and resolve and host in resolve:
+        download_via_resolved_connect(url, path, proxy, resolve[host], timeout, attempts)
+        return
+
+    raise MinerUError(f"Download failed after {attempts} attempts: {last_error}")
 
 
 def standard_payload(args: argparse.Namespace, source_url: str | None = None) -> dict[str, Any]:
@@ -303,7 +474,8 @@ def parse_standard(args: argparse.Namespace, token: str) -> dict[str, Any]:
     full_zip_url = result_data.get("full_zip_url")
     if not full_zip_url:
         raise MinerUError(f"Done result did not include full_zip_url: {json.dumps(result_data, ensure_ascii=False)}")
-    download(full_zip_url, zip_path)
+    resolve = parse_resolve_entries(args.resolve)
+    download(full_zip_url, zip_path, proxy=effective_proxy(args.proxy), resolve=resolve)
     zip_full_md = extract_full_markdown(zip_path, extract_dir, markdown_path)
     if args.no_keep_zip:
         zip_path.unlink(missing_ok=True)
@@ -352,7 +524,8 @@ def parse_agent(args: argparse.Namespace) -> dict[str, Any]:
     markdown_url = result["data"].get("markdown_url")
     if not markdown_url:
         raise MinerUError(f"Done result did not include markdown_url: {json.dumps(result['data'], ensure_ascii=False)}")
-    download(markdown_url, markdown_path)
+    resolve = parse_resolve_entries(args.resolve)
+    download(markdown_url, markdown_path, proxy=effective_proxy(args.proxy), resolve=resolve)
 
     manifest = {
         "mode": "agent",
@@ -385,6 +558,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--cache-tolerance", type=int, help="Cache tolerance in seconds for standard API URL input.")
     parser.add_argument("--timeout", type=int, default=1800, help="Polling timeout in seconds.")
     parser.add_argument("--interval", type=int, default=5, help="Polling interval in seconds.")
+    parser.add_argument("--proxy", help="HTTP proxy URL for result downloads. Defaults to HTTPS_PROXY or HTTP_PROXY env var if set. Pass empty string to disable.")
+    parser.add_argument(
+        "--resolve",
+        action="append",
+        help="Force result downloads for a host through specific IPs, syntax host=ip1,ip2. Useful with proxy CONNECT and SNI.",
+    )
     parser.add_argument("--no-keep-zip", action="store_true", help="Delete result.zip after extracting full.md.")
     return parser.parse_args(argv)
 
