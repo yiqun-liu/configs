@@ -29,9 +29,10 @@ For each substantive user message, check for:
 - **Unnatural phrasing**: awkward word order, overly literal translations from another language, idioms used incorrectly
 - **Ambiguity**: sentences that could be interpreted in multiple ways
 - **Wordiness**: phrases that could be expressed more concisely without losing meaning
+- **Style & precision refinements**: word choices that are grammatically correct but could be more precise, idiomatic, or natural. This includes both one-off word swaps (e.g., "fits" → "aligns with" for abstract concepts) and generalizable patterns (e.g., "which" → "that" for restrictive clauses in AmE, adverb placement like "Probably I" → "I probably", register-appropriate vocabulary). Flag any noticeable improvement — the original is already correct, but a careful writer would appreciate the suggestion.
 
 Do NOT flag:
-- Style preferences that are already clear enough for communication
+- Style preferences so minor that they add noise without meaningful value (the line between "useful refinement" and "noise" is judgment-based; when in doubt, include it under Style & Precision rather than omitting)
 - Minor typos that don't affect meaning (the agent already understood them)
 - Technical shorthand or abbreviations common in the domain (e.g., "TDD", "PR", "refactor")
 - Dialectal or regional variations that are grammatically valid (e.g., British vs American English)
@@ -44,6 +45,7 @@ Group findings by issue type when there are multiple issues. Use these group nam
 - **Phrasing**
 - **Ambiguity**
 - **Conciseness**
+- **Style & Precision**
 
 Within each group, prefer a compact markdown table:
 
@@ -52,6 +54,10 @@ Within each group, prefer a compact markdown table:
 | I want it to be something be triggered on demand | I want it to be something **that is** triggered on demand | "be" → "that is" |
 
 Keep rewrites concise. Highlight changed words or phrases in the rewrite with bold text. Do not over-explain or add pedantic grammar notes.
+
+**Separating errors from refinements:** Style & Precision findings must be visually and tonally distinct from Grammar/Phrasing/Ambiguity/Conciseness findings. Errors say "this should be fixed"; refinements say "this could be improved." Place Style & Precision in its own section after the error groups, or add a note like "(enhancement, not an error)" in the Changed column.
+
+When the user asks to elaborate on a refinement, provide a concise explanation of the distinction (e.g., restrictive vs non-restrictive relative clauses, connotative differences between near-synonyms). Keep explanations to 2-3 sentences unless the user asks for more detail.
 
 If the original message is long, do not force it into a table. Use a short quoted excerpt in the table, or use the block format below for readability.
 
@@ -74,7 +80,7 @@ When there are no meaningful issues, say that the visible messages were already 
 ## Guidelines
 
 - **Lightweight**: This is quick feedback, not a language lesson. Keep it actionable.
-- **Selective**: Only flag issues that meaningfully affect clarity or naturalness. If a sentence is already clear enough for communication, leave it alone.
+- **Selective with errors, generous with refinements**: For Grammar, Phrasing, Ambiguity, and Conciseness, only flag issues that meaningfully affect clarity or naturalness. For Style & Precision, flag any noticeable improvement in precision or idiomaticity — but always frame these as optional, and keep them separate from error corrections.
 - **Respectful**: Frame feedback as suggestions, never as corrections. The user's message was already understood — this is about polish, not fixing misunderstandings.
 - **Language-aware**: Adapt review criteria to the language being checked. What counts as "unnatural" varies by language.
 - **Session-scoped**: Only review messages from the current session. Do not reference past sessions or make assumptions about the user's general writing patterns beyond what's visible here.
