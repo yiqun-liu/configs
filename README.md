@@ -72,6 +72,18 @@ nvim tracked-configs.json
 git add -A && git commit -m "update configs"
 ```
 
+## Prerequisites
+
+Configs depend on external tools and env vars (API keys). Declare them in
+`prerequisites.json` and verify on any machine:
+
+```bash
+./manage.sh check-deps          # status table; exits 1 if a required dep is missing
+./manage.sh check-deps --json   # machine-readable
+```
+
+See `tools/config-manager/usage.md` for the manifest format.
+
 ## Notes
 
 - Configurations may have external dependencies (e.g., plugin managers, LSP servers)

@@ -10,11 +10,13 @@ copy logic with a JSON manifest and a shared implementation.
 
 ```text
 tracked-configs.json
+prerequisites.json
 tools/config-manager/
   usage.md
   design.md
   manage.py
   tracked-configs.schema.json
+  prerequisites.schema.json
   config_manager/
     __init__.py
     cli.py
@@ -25,6 +27,7 @@ tools/config-manager/
     compare.py
     platform.py
     output.py
+    deps.py
 manage.sh
 manage.ps1
 ```
@@ -45,6 +48,7 @@ logic.
 | `compare.py` | Compare files, directories, link targets, and unified text diffs |
 | `platform.py` | Platform-specific link creation and link inspection |
 | `output.py` | Human-readable and JSON output formatting |
+| `deps.py` | Load the prerequisites manifest and verify tools and env vars |
 
 ## Data Model
 
@@ -161,6 +165,60 @@ filtered:
 Dry runs call the same operation functions as mutating commands, but return
 planned actions before prompts or filesystem changes are made. Non-dry-run
 `deploy` and `collect` prompt once per resolved target before execution.
+
+## Prerequisites Verification
+
+`check-deps` reads `prerequisites.json` instead of `tracked-configs.json`, so it
+runs even when deployment config is absent. The manifest holds two lists: tool
+`dependencies` and `env_vars`.
+
+```python
+@dataclass(frozen=True)
+class Dependency:
+    id: str
+    name: str
+    description: str
+    tier: Literal["required", "recommended", "optional"]
+    manual: bool
+    install: dict[str, str]
+    check: tuple[str, ...] | None
+    depend_on: tuple[str, ...]
+    platform: tuple[str, ...] | None
+
+@dataclass(frozen=True)
+class CheckResult:
+    kind: Literal["tool", "env_var"]
+    id: str
+    name: str
+    tier: Literal["required", "recommended", "optional"]
+    status: Literal["ok", "missing", "blocked", "manual", "skip"]
+    blocked_by: tuple[str, ...]
+```
+
+`check` commands run through `subprocess` with `shell=True`; any command exiting 0
+marks the entry `ok`. `env_vars` are read directly from `os.environ`, so their
+check is cross-platform and needs no shell. `platform` is matched against the
+current OS tokens (`windows`, or `linux`/`macos` plus the `unix` alias); a
+non-matching entry is reported `skip` and is neither checked nor counted as a
+failure.
+
+```mermaid
+flowchart TD
+    A["Load prerequisites.json"] --> B["Base status per tool"]
+    B --> C["Propagate depend_on to fixpoint"]
+    C --> D["Check env_vars via os.environ"]
+    D --> E["Print table or JSON"]
+    E --> F{"required missing/blocked, or env_var unset?"}
+    F -->|yes| G["exit 1"]
+    F -->|no| H["exit 0"]
+```
+
+`depend_on` is resolved to a fixpoint: an entry becomes `blocked` when any of its
+dependencies is `missing` or `blocked`, and that status cascades to anything
+depending on it. Validation mirrors `model.py` — JSON is parsed by hand,
+`ConfigError` is raised on shape violations, and no third-party validator is
+imported. `check-deps` never runs `install` commands; those are descriptive until
+a later command uses them.
 
 ## Validation
 

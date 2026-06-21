@@ -1,0 +1,294 @@
+{
+  "$schema": "./tools/config-manager/prerequisites.schema.json",
+  "schemaVersion": 1,
+  "dependencies": [
+    {
+      "id": "uv",
+      "name": "uv",
+      "description": "Python package and version manager; provides the uvx runner.",
+      "tier": "required",
+      "install": {
+        "script": "curl -LsSf https://astral.sh/uv/install.sh | sh"
+      },
+      "check": [
+        "uv --version",
+        "uvx --version"
+      ]
+    },
+    {
+      "id": "python",
+      "name": "Python",
+      "description": "Python runtime.",
+      "tier": "required",
+      "install": {
+        "script": "uv python install"
+      },
+      "check": [
+        "python --version",
+        "python3 --version"
+      ],
+      "depend_on": [
+        "uv"
+      ]
+    },
+    {
+      "id": "git",
+      "name": "Git",
+      "description": "Version control system.",
+      "tier": "required",
+      "install": {
+        "winget": "winget install Git.Git",
+        "brew": "brew install git",
+        "apt": "sudo apt install git"
+      },
+      "check": "git --version"
+    },
+    {
+      "id": "nvm",
+      "name": "nvm",
+      "description": "Node.js version manager (nvm-windows on Windows, nvm on macOS/Linux).",
+      "tier": "required",
+      "install": {
+        "winget": "winget install CoreyButler.NVMforWindows",
+        "script": "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
+      },
+      "check": [
+        "nvm version",
+        "nvm --version"
+      ]
+    },
+    {
+      "id": "node",
+      "name": "Node.js",
+      "description": "JavaScript runtime; includes npm.",
+      "tier": "required",
+      "install": {
+        "script": "nvm install --lts"
+      },
+      "check": "node --version",
+      "depend_on": [
+        "nvm"
+      ]
+    },
+    {
+      "id": "neovim",
+      "name": "Neovim",
+      "description": "Editor (requires 0.11+ for the configured LSP setup).",
+      "tier": "required",
+      "install": {
+        "winget": "winget install Neovim.Neovim",
+        "brew": "brew install neovim",
+        "apt": "sudo apt install neovim"
+      },
+      "check": "nvim --version",
+      "depend_on": [
+        "git"
+      ]
+    },
+    {
+      "id": "make",
+      "name": "GNU make",
+      "description": "Build tool for Neovim treesitter parsers and LuaSnip.",
+      "tier": "recommended",
+      "install": {
+        "brew": "brew install make",
+        "apt": "sudo apt install make",
+        "pacman": "pacman -S make"
+      },
+      "check": "make --version"
+    },
+    {
+      "id": "c-compiler",
+      "name": "C compiler",
+      "description": "C compiler for Neovim treesitter parser compilation.",
+      "tier": "recommended",
+      "install": {
+        "brew": "brew install gcc",
+        "apt": "sudo apt install build-essential",
+        "pacman": "pacman -S gcc"
+      },
+      "check": [
+        "gcc --version",
+        "clang --version",
+        "cc --version"
+      ]
+    },
+    {
+      "id": "clangd",
+      "name": "clangd",
+      "description": "C/C++ language server (Neovim + clangd config).",
+      "tier": "recommended",
+      "install": {
+        "winget": "winget install LLVM.LLVM",
+        "brew": "brew install llvm",
+        "apt": "sudo apt install clangd"
+      },
+      "check": "clangd --version"
+    },
+    {
+      "id": "pylsp",
+      "name": "python-lsp-server",
+      "description": "Python language server for Neovim (user-level install).",
+      "tier": "recommended",
+      "install": {
+        "script": "uv tool install \"python-lsp-server[all]\""
+      },
+      "check": "pylsp --version",
+      "depend_on": [
+        "uv"
+      ]
+    },
+    {
+      "id": "rust-analyzer",
+      "name": "rust-analyzer",
+      "description": "Rust language server for Neovim. Installed via rustup (not tracked).",
+      "tier": "optional",
+      "install": {
+        "script": "rustup component add rust-analyzer"
+      },
+      "check": "rust-analyzer --version"
+    },
+    {
+      "id": "ripgrep",
+      "name": "ripgrep",
+      "description": "Fuzzy live-grep backend for Neovim telescope.",
+      "tier": "recommended",
+      "install": {
+        "winget": "winget install BurntSushi.ripgrep.MSVC",
+        "brew": "brew install ripgrep",
+        "apt": "sudo apt install ripgrep"
+      },
+      "check": [
+        "rg --version",
+        "ripgrep --version"
+      ]
+    },
+    {
+      "id": "fd",
+      "name": "fd",
+      "description": "Optional telescope accelerator: telescope find_files uses fd transparently when installed and falls back to `find` otherwise. Not referenced directly by any config.",
+      "tier": "optional",
+      "install": {
+        "winget": "winget install sharkdp.fd",
+        "brew": "brew install fd",
+        "apt": "sudo apt install fd-find"
+      },
+      "check": [
+        "fd --version",
+        "fdfind --version"
+      ]
+    },
+    {
+      "id": "gh",
+      "name": "GitHub CLI",
+      "description": "Optional: the code-review skill uses `gh pr view` to fetch PR descriptions when available. No other config references it.",
+      "tier": "optional",
+      "install": {
+        "winget": "winget install GitHub.cli",
+        "brew": "brew install gh",
+        "apt": "sudo apt install gh"
+      },
+      "check": "gh --version"
+    },
+    {
+      "id": "tmux",
+      "name": "tmux",
+      "description": "Terminal multiplexer.",
+      "tier": "recommended",
+      "platform": "unix",
+      "install": {
+        "brew": "brew install tmux",
+        "apt": "sudo apt install tmux"
+      },
+      "check": "tmux -V"
+    },
+    {
+      "id": "aerc",
+      "name": "aerc",
+      "description": "Terminal email client.",
+      "tier": "recommended",
+      "platform": "unix",
+      "install": {
+        "brew": "brew install aerc",
+        "apt": "sudo apt install aerc"
+      },
+      "check": "aerc --version",
+      "depend_on": [
+        "mbsync",
+        "oama"
+      ]
+    },
+    {
+      "id": "oama",
+      "name": "oama",
+      "description": "OAuth credential manager for aerc and mbsync. Install the release binary from github.com/pdobsan/oama/releases.",
+      "tier": "recommended",
+      "manual": true,
+      "platform": "unix",
+      "check": "oama --version"
+    },
+    {
+      "id": "mbsync",
+      "name": "mbsync (isync)",
+      "description": "IMAP to Maildir synchronizer; feeds aerc.",
+      "tier": "recommended",
+      "platform": "unix",
+      "install": {
+        "brew": "brew install isync",
+        "apt": "sudo apt install isync"
+      },
+      "check": "mbsync --version",
+      "depend_on": [
+        "oama"
+      ]
+    },
+    {
+      "id": "htop",
+      "name": "htop",
+      "description": "Process viewer bound to the Neovim <leader>htop keymap.",
+      "tier": "optional",
+      "platform": "unix",
+      "install": {
+        "brew": "brew install htop",
+        "apt": "sudo apt install htop"
+      },
+      "check": "htop --version"
+    },
+    {
+      "id": "nerd-font",
+      "name": "Nerd Font",
+      "description": "Patched font for Neovim icons. Install any font from nerdfonts.com.",
+      "tier": "recommended",
+      "manual": true
+    },
+    {
+      "id": "vscodevim",
+      "name": "VSCodeVim",
+      "description": "VS Code extension providing Vim emulation.",
+      "tier": "optional",
+      "manual": true
+    },
+    {
+      "id": "pyyaml",
+      "name": "PyYAML",
+      "description": "YAML parser used by skill-creator's quick_validate.py.",
+      "tier": "recommended",
+      "install": {
+        "script": "uv pip install --system PyYAML"
+      },
+      "check": "python -c \"import yaml\"",
+      "depend_on": [
+        "python",
+        "uv"
+      ]
+    }
+  ],
+  "env_vars": [
+    "MINIMAX_API_KEY",
+    "CSI_API_KEY",
+    "CONTEXT7_API_KEY",
+    "ZHIPU_API_KEY",
+    "EXA_API_KEY",
+    "MINERU_TOKEN"
+  ]
+}

@@ -5,6 +5,7 @@ import sys
 from typing import Literal, TextIO
 
 from .compare import OnelineResult
+from .deps import CheckResult, Status
 from .model import ResolvedTarget
 from .operations import OperationResult
 
@@ -12,7 +13,9 @@ ColorMode = Literal["auto", "always", "never"]
 RESET = "\033[0m"
 RED = "\033[31m"
 GREEN = "\033[32m"
+YELLOW = "\033[33m"
 CYAN = "\033[36m"
+DIM = "\033[2m"
 
 
 def print_entries(entries: list[ResolvedTarget], *, as_json: bool) -> None:
@@ -31,6 +34,98 @@ def print_entries(entries: list[ResolvedTarget], *, as_json: bool) -> None:
 
     for entry in entries:
         print(f"{entry.id}: {entry.method} {entry.source} -> {entry.target}")
+
+
+STATUS_COLORS: dict[Status, str] = {
+    "ok": GREEN,
+    "missing": RED,
+    "blocked": YELLOW,
+    "manual": DIM,
+    "skip": DIM,
+}
+
+_UNICODE_SYMBOLS: dict[Status, str] = {
+    "ok": "\u2713",
+    "missing": "\u2717",
+    "blocked": "\u23f8",
+    "manual": "\u2014",
+    "skip": "\u00b7",
+}
+
+_ASCII_SYMBOLS: dict[Status, str] = {
+    "ok": "+",
+    "missing": "x",
+    "blocked": "!",
+    "manual": "-",
+    "skip": ".",
+}
+
+
+def _status_symbols(stream: TextIO) -> dict[Status, str]:
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    try:
+        for symbol in _UNICODE_SYMBOLS.values():
+            symbol.encode(encoding)
+    except (UnicodeEncodeError, LookupError):
+        return _ASCII_SYMBOLS
+    return _UNICODE_SYMBOLS
+
+
+def print_check_results(
+    results: list[CheckResult],
+    *,
+    as_json: bool,
+    stream: TextIO | None = None,
+) -> None:
+    output = stream if stream is not None else sys.stdout
+    if as_json:
+        payload = [
+            {
+                "type": result.kind,
+                "id": result.id,
+                "name": result.name,
+                "tier": result.tier,
+                "status": result.status,
+                "blocked_by": list(result.blocked_by),
+            }
+            for result in results
+        ]
+        print(json.dumps(payload, indent=2), file=output)
+        return
+
+    use_color = output.isatty()
+    symbols = _status_symbols(output)
+    print(f"{'STATUS':<14} {'TIER':<12} {'KIND':<7} NAME", file=output)
+
+    missing = 0
+    blocked = 0
+    skipped = 0
+    for result in results:
+        plain = f"{symbols[result.status]} {result.status}".ljust(14)
+        status_text = colored(plain, STATUS_COLORS[result.status]) if use_color else plain
+        kind = "env" if result.kind == "env_var" else "tool"
+        line = f"{status_text} {result.tier:<12} {kind:<7} {result.name}"
+        if result.blocked_by:
+            line += f"  (blocked by: {', '.join(result.blocked_by)})"
+        print(line, file=output)
+        if result.status == "missing":
+            missing += 1
+        elif result.status == "blocked":
+            blocked += 1
+        elif result.status == "skip":
+            skipped += 1
+
+    parts = []
+    if missing:
+        parts.append(f"{missing} missing")
+    if blocked:
+        parts.append(f"{blocked} blocked")
+    if skipped:
+        parts.append(f"{skipped} skipped")
+    if parts:
+        print(f"\n{', '.join(parts)}", file=output)
+    else:
+        print("\nAll prerequisites satisfied.", file=output)
 
 
 def print_results(

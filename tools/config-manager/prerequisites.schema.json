@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "prerequisites.schema.json",
+  "title": "Prerequisites",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "dependencies"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dependency"
+      }
+    },
+    "env_vars": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      }
+    }
+  },
+  "$defs": {
+    "dependency": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "description",
+        "tier"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "required",
+            "recommended",
+            "optional"
+          ]
+        },
+        "manual": {
+          "type": "boolean",
+          "default": false
+        },
+        "install": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "check": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ]
+        },
+        "depend_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "platform": {
+          "description": "Restrict the entry to specific platforms. Omit to apply on all platforms.",
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "windows",
+                "linux",
+                "macos",
+                "unix"
+              ]
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "windows",
+                  "linux",
+                  "macos",
+                  "unix"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
