@@ -39,6 +39,26 @@ Global instructions for general purpose AI agents.
 - Always read and respect top-level `README.md` and other human-facing documentation
 - When a development plan would break or contradict documented behavior, explicitly ask the user for confirmation before proceeding
 
+### Validation & Linting
+- When you finish editing source, run the relevant linter/formatter/type-checker
+  on what you changed — file-scoped, not whole-project. Probe for the tool; skip
+  silently if it isn't installed. Never run builds or full test suites unless
+  explicitly asked.
+- Markdown: `markdownlint-cli2 --config ~/.markdownlint-cli2.jsonc <file>` (add
+  `--fix` to auto-fix safe issues). The managed file is the base config; a
+  project's own markdownlint config overrides it.
+- Python: `ruff check <file>`, `ruff format --check <file>`, `mypy <file>`.
+- Rust: `cargo fmt --check` and `cargo clippy` (crate-wide; run from crate root).
+- Shell: `shellcheck <file>`.
+- Respect a project's own config files and lint/typecheck scripts over these
+  defaults.
+
+### Execution Defaults
+- Python: run via `uv run` — `uv run script.py`, or `uv run --with <pkg> script.py`
+  for an ephemeral dependency (keeps the global environment clean, avoids
+  missing-module errors). Defer to a project's own environment when one is
+  active (venv, poetry, uv project); fall back to `python3` if uv is not installed.
+
 ### Research & Information
 - Proactively use `webfetch` and web search to improve results and present research as comparisons with trade-offs
 - If the agent senses it lacks sufficient information, proactively ask the user for clarification or missing details

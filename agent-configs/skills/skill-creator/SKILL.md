@@ -44,6 +44,14 @@ Match the level of specificity to the task's fragility and variability:
 
 Think of the agent as exploring a path: a narrow bridge with cliffs needs specific guardrails (low freedom), while an open field allows many routes (high freedom).
 
+### Prefer Deterministic Tools
+
+When a check or piece of work has a deterministic answer, prefer a tool over agent reasoning—tools are faster, cheaper in tokens, and more reliable than redoing the work by hand.
+
+**Default: reach for the tool first.** Validation, formatting, structural checks, and file search belong to a tool; reserve the agent for judgment, design, and writing.
+
+This skill ships two: `scripts/init_skill.py` (scaffold, Step 3) and `scripts/quick_validate.py` (validate frontmatter, naming, required fields—run after editing). If a recurring check has no tool yet, add one to `scripts/` instead of re-deriving the answer each time.
+
 ### Anatomy of a Skill
 
 Every skill consists of a required SKILL.md file and optional bundled resources:
@@ -292,6 +300,8 @@ These files contain established best practices for effective skill design.
 To begin implementation, start with the reusable resources identified above: `scripts/`, `references/`, and `assets/` files. Note that this step may require user input. For example, when implementing a `brand-guidelines` skill, the user may need to provide brand assets or templates to store in `assets/`, or documentation to store in `references/`.
 
 Added scripts must be tested by actually running them to ensure there are no bugs and that the output matches what is expected. If there are many similar scripts, only a representative sample needs to be tested to ensure confidence that they all work while balancing time to completion.
+
+Validate the result deterministically: `python scripts/quick_validate.py <skill-dir>` checks frontmatter, naming, and required fields.
 
 Any example files and directories not needed for the skill should be deleted. The initialization script creates example files in `scripts/`, `references/`, and `assets/` to demonstrate structure, but most skills won't need all of them.
 

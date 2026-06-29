@@ -32,7 +32,7 @@ Some skills are derived from the following sources:
 
 - `capture-knowledge/` - New skill for memo creation
 - `git-history-cleanup/` - Rewrite messy branches into clean commit stacks using worktree isolation
-- `check-user-prompts/` - Review and polish the user's writing from a session
+- `polish-user-writing/` - Review and polish the user's writing from a session, with spaced-repetition practice
 - `document-to-markdown/` - Convert documents (PDF, Word, etc.) into clean, LLM-friendly Markdown
 
 ## TODO

@@ -12,7 +12,7 @@ Top-level directories (`vim`, `git`, `nvim`, `tmux`, `clangd`, `aerc`, `mbsync`,
 
 ## Key Gotchas
 
-- **No test/lint/CI commands exist** — don't try to run them.
+- **No build/test/CI commands exist** — don't try to run them.
 - `tracked-configs.json` is **gitignored** (machine-specific). Edit `tracked-configs.example` as the template.
 - `nvim/lazy-lock.json` is gitignored (Neovim plugin lockfile).
 - `agent-configs/AGENTS.md` is a **global personal instructions file** deployed to `~/.config/opencode/AGENTS.md` — it is NOT repo-specific guidance.
