@@ -54,7 +54,8 @@
       },
       "check": [
         "nvm version",
-        "nvm --version"
+        "nvm --version",
+        ". \"$HOME/.nvm/nvm.sh\" && nvm --version"
       ]
     },
     {
@@ -65,7 +66,10 @@
       "install": {
         "script": "nvm install --lts"
       },
-      "check": "node --version",
+      "check": [
+        "node --version",
+        ". \"$HOME/.nvm/nvm.sh\" && node --version"
+      ],
       "depend_on": [
         "nvm"
       ]
