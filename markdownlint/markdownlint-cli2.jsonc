@@ -1,0 +1,10 @@
+{
+  "config": {
+    "line-length": false, // MD013: long prose lines are intentional
+    "no-inline-html": false // MD033: angle-bracket placeholders (<topic>, <int>) are intentional
+  },
+  "ignores": [
+    ".tmp/**",
+    "node_modules/**"
+  ]
+}
