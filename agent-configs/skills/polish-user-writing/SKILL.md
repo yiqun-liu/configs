@@ -1,9 +1,9 @@
 ---
-name: check-user-prompts
+name: polish-user-writing
 description: "Review and polish the user's writing from a session: grammar, phrasing, and clarity, then run an active-practice phase (Vocabulary, Grammar, Style) with spaced repetition. Triggered explicitly by the user, usually after a technical session. Works for any language."
 ---
 
-# Check User Prompts
+# Polish User Writing
 
 ## Overview
 
@@ -91,7 +91,7 @@ After presenting findings, run an **active-practice** phase that turns review in
 
 **Level split for naturalness:** phrase-level (the right word combination) → Vocabulary; sentence-level (clean, concise flow) → Style. A source may yield items in more than one track — overlap is allowed (they train different skills).
 
-**Persistent bank + spaced repetition.** State persists across sessions in `.tmp/agent/check-user-prompts/`, one timestamped file per session named `YYYY-MM-DDTHHMM.md`. Each item has a stable **id** (Vocabulary = normalized chunk; Grammar = pattern name; Style = sentence slug) so it dedups across sessions. SRS is simple Leitner: intervals 1d → 2d → 4d → 7d → 14d → 30d (doubling, capped at 30d); a correct answer advances one step, an incorrect one resets to 1d; `due = last_reviewed + interval`.
+**Persistent bank + spaced repetition.** State persists across sessions in `.tmp/agent/polish-user-writing/`, one timestamped file per session named `YYYY-MM-DDTHHMM.md`. Each item has a stable **id** (Vocabulary = normalized chunk; Grammar = pattern name; Style = sentence slug) so it dedups across sessions. SRS is simple Leitner: intervals 1d → 2d → 4d → 7d → 14d → 30d (doubling, capped at 30d); a correct answer advances one step, an incorrect one resets to 1d; `due = last_reviewed + interval`.
 
 **Flow each session:**
 
@@ -104,7 +104,7 @@ After presenting findings, run an **active-practice** phase that turns review in
 **Bank file format:**
 
 ````markdown
-# Check-User-Prompts Session — 2026-06-21 14:30
+# Polish-User-Writing Session — 2026-06-21 14:30
 
 ## Reviewed
 - (which user messages were reviewed)
