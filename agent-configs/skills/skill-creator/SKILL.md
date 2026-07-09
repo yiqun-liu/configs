@@ -44,6 +44,18 @@ Match the level of specificity to the task's fragility and variability:
 
 Think of the agent as exploring a path: a narrow bridge with cliffs needs specific guardrails (low freedom), while an open field allows many routes (high freedom).
 
+### Enumerate and Partition Along One Axis
+
+Any enumeration or partition — a bullet list, a set of sections or headings, table columns, categories, a taxonomy, or criteria/checklists — should follow a single explicit axis, ideally a granularity ladder (smallest unit → largest) or a type taxonomy, so it is ordered and near-MECE. Ad-hoc divisions mix axes, read as brainstorms, and miss items silently.
+
+Signs a division is ad-hoc: items drawn from different axes, no consistent ordering, hard to tell what's missing. When you spot one, pick the axis and regroup. Common axes:
+
+- By type (e.g., claim types: declarative → imperative → behavioral → relational)
+- By granularity (e.g., inline → paragraph → section → document)
+- By linguistic level (e.g., word → sentence → discourse)
+
+This is the canonical statement; note-review applies it as a review check — keep both in sync.
+
 ### Anatomy of a Skill
 
 Every skill consists of a required SKILL.md file and optional bundled resources:
