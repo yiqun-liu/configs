@@ -30,10 +30,12 @@ Some skills are derived from the following sources:
 
 ## Custom Skills
 
-- `capture-knowledge/` - New skill for memo creation
+- `capture-knowledge/` - Create markdown memos documenting knowledge and information discovered during workflow
 - `git-history-cleanup/` - Rewrite messy branches into clean commit stacks using worktree isolation
-- `check-user-prompts/` - Review and polish the user's writing from a session
+- `polish-user-writing/` - Review and polish the user's writing from a session, with spaced-repetition practice
 - `document-to-markdown/` - Convert documents (PDF, Word, etc.) into clean, LLM-friendly Markdown
+- `prompt-retrospective/` - Session retrospective over information conveyed — reviews agent standing instructions and user prompt quality, proposes changes
+- `tracker-normalization/` - Normalize TODO / Goal tracker sections into trawl-compatible format
 
 ## TODO
 
