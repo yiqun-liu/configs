@@ -12,13 +12,13 @@ Top-level directories (`vim`, `git`, `nvim`, `tmux`, `clangd`, `aerc`, `mbsync`,
 
 ## Key Gotchas
 
-- **No test/lint/CI commands exist** — don't try to run them.
+- **No build/test/CI commands exist.**
 - `tracked-configs.json` is **gitignored** (machine-specific). Edit `tracked-configs.example` as the template.
 - `nvim/lazy-lock.json` is gitignored (Neovim plugin lockfile).
 - `agent-configs/AGENTS.md` is a **global personal instructions file** deployed to `~/.config/opencode/AGENTS.md` — it is NOT repo-specific guidance.
 - `agent-configs/skills` is symlinked (`method: link`) — edits in repo immediately affect `~/.agents/skills`.
 - `link` entries: `collect` only validates, never copies back.
-- After editing config files, follow the sate rules below to deploy to the system via config manager. See [`tools/config-manager/usage.md`](tools/config-manager/usage.md) for full deployment command reference.
+- After editing config files, follow the safety rules below to deploy to the system via config manager. See [`tools/config-manager/usage.md`](tools/config-manager/usage.md) for full deployment command reference.
 
 ### Deploy Safety Rules
 
