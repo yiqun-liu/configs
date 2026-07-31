@@ -1,6 +1,9 @@
 # Repo-local temporary files
 .tmp/
 
+# Git worktrees (project-local)
+.worktrees/
+
 # MacOS
 .DS_Store
 

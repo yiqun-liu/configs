@@ -35,18 +35,9 @@ grep -i "worktree.*director" AGENTS.md 2>/dev/null
 
 **If preference specified:** Use it without asking.
 
-### 3. Ask User
+### 3. Default to `.worktrees/`
 
-If no directory exists and no AGENTS.md preference:
-
-```
-No worktree directory found. Where should I create worktrees?
-
-1. .worktrees/ (project-local, hidden)
-2. ~/.config/agent-configs/worktrees/<project-name>/ (global location)
-
-Which would you prefer?
-```
+If no directory exists and no AGENTS.md preference, use `.worktrees/` (project-local, hidden). This is the standard convention — no need to ask the user.
 
 ## Safety Verification
 
@@ -67,37 +58,20 @@ git check-ignore -q .worktrees 2>/dev/null || git check-ignore -q worktrees 2>/d
 
 **Why critical:** Prevents accidentally committing worktree contents to repository.
 
-### For Global Directory (~/.config/agent-configs/worktrees)
-
-No .gitignore verification needed - outside project entirely.
-
 ## Creation Steps
 
-### 1. Detect Project Name
+### 1. Create Worktree
 
 ```bash
-project=$(basename "$(git rev-parse --show-toplevel)")
-```
-
-### 2. Create Worktree
-
-```bash
-# Determine full path
-case $LOCATION in
-  .worktrees|worktrees)
-    path="$LOCATION/$BRANCH_NAME"
-    ;;
-  ~/.config/agent-configs/worktrees/*)
-    path="~/.config/agent-configs/worktrees/$project/$BRANCH_NAME"
-    ;;
-esac
+# Determine full path (default: .worktrees)
+path="${LOCATION:-.worktrees}/$BRANCH_NAME"
 
 # Create worktree with new branch
 git worktree add "$path" -b "$BRANCH_NAME"
 cd "$path"
 ```
 
-### 3. Run Project Setup
+### 2. Run Project Setup
 
 Auto-detect and run appropriate setup:
 
@@ -116,7 +90,7 @@ if [ -f pyproject.toml ]; then poetry install; fi
 if [ -f go.mod ]; then go mod download; fi
 ```
 
-### 4. Verify Clean Baseline
+### 3. Verify Clean Baseline
 
 Run tests to ensure worktree starts clean:
 
@@ -132,7 +106,7 @@ go test ./...
 
 **If tests pass:** Report ready.
 
-### 5. Report Location
+### 4. Report Location
 
 ```
 Worktree ready at <full-path>
@@ -147,7 +121,7 @@ Ready to implement <feature-name>
 | `.worktrees/` exists | Use it (verify ignored) |
 | `worktrees/` exists | Use it (verify ignored) |
 | Both exist | Use `.worktrees/` |
-| Neither exists | Check AGENTS.md → Ask user |
+| Neither exists | Check AGENTS.md → default to `.worktrees/` |
 | Directory not ignored | Add to .gitignore + commit |
 | Tests fail during baseline | Report failures + ask |
 | No package.json/Cargo.toml | Skip dependency install |
@@ -162,7 +136,7 @@ Ready to implement <feature-name>
 ### Assuming directory location
 
 - **Problem:** Creates inconsistency, violates project conventions
-- **Fix:** Follow priority: existing > AGENTS.md > ask
+- **Fix:** Follow priority: existing > AGENTS.md > default
 
 ### Proceeding with failing tests
 
@@ -200,8 +174,7 @@ Ready to implement auth feature
 - Skip AGENTS.md check
 
 **Always:**
-- Follow directory priority: existing > AGENTS.md > ask
+- Follow directory priority: existing > AGENTS.md > default to `.worktrees/`
 - Verify directory is ignored for project-local
 - Auto-detect and run project setup
 - Verify clean test baseline
-
