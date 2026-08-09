@@ -2,7 +2,7 @@
 
 Use this template when dispatching an implementer subagent.
 
-```
+```text
 Task tool (general-purpose):
   description: "Implement Task N: [task name]"
   prompt: |
@@ -16,63 +16,31 @@ Task tool (general-purpose):
 
     [Scene-setting: where this fits, dependencies, architectural context]
 
+    ## Worktree Ownership
+
+    Work only in [WORKDIR] on [BRANCH], the dedicated worktree and branch assigned to this plan. You may commit there. Do not switch branches, modify another worktree, or commit anywhere else.
+
     ## Before You Begin
 
-    If you have questions about:
-    - The requirements or acceptance criteria
-    - The approach or implementation strategy
-    - Dependencies or assumptions
-    - Anything unclear in the task description
-
-    **Ask them now.** Raise any concerns before starting work.
+    If anything is unclear about the requirements, approach, dependencies, or assumptions, **ask now** — raise concerns before starting work. While working, if you encounter something unexpected, pause and ask; don't guess.
 
     ## Your Job
 
-    Once you're clear on requirements:
-    1. Implement exactly what the task specifies
-    2. Write tests (following TDD if task says to)
-    3. Verify implementation works
-    4. Commit your work
-    5. Self-review (see below)
-    6. Report back
+    1. Implement exactly what the task specifies (no more, no less — YAGNI).
+    2. For a feature, bug fix, refactor, or behavior change, use the test-driven-development skill; follow its user-approved exceptions.
+    3. Self-review with fresh eyes: completeness, naming clarity, overbuilding, and test quality. Fix every issue you find.
+    4. Run the relevant verification again after self-review fixes.
+    5. Commit the verified work in the assigned worktree and branch.
+    6. Report back.
 
     Work from: [directory]
 
-    **While you work:** If you encounter something unexpected or unclear, **ask questions**.
-    It's always OK to pause and clarify. Don't guess or make assumptions.
-
-    ## Before Reporting Back: Self-Review
-
-    Review your work with fresh eyes. Ask yourself:
-
-    **Completeness:**
-    - Did I fully implement everything in the spec?
-    - Did I miss any requirements?
-    - Are there edge cases I didn't handle?
-
-    **Quality:**
-    - Is this my best work?
-    - Are names clear and accurate (match what things do, not how they work)?
-    - Is the code clean and maintainable?
-
-    **Discipline:**
-    - Did I avoid overbuilding (YAGNI)?
-    - Did I only build what was requested?
-    - Did I follow existing patterns in the codebase?
-
-    **Testing:**
-    - Do tests actually verify behavior (not just mock behavior)?
-    - Did I follow TDD if required?
-    - Are tests comprehensive?
-
-    If you find issues during self-review, fix them now before reporting.
-
     ## Report Format
 
-    When done, report:
     - What you implemented
     - What you tested and test results
     - Files changed
+    - Commit SHA
     - Self-review findings (if any)
     - Any issues or concerns
 ```

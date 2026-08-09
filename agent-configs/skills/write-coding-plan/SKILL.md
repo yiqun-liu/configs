@@ -24,6 +24,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 ## Bite-Sized Task Granularity
 
 **Each step is one action (2-5 minutes):**
+
 - "Write the failing test" - step
   - if some existing tests are affected, update and include them as failing tests
 - "Run failing to make sure it fails" - step
@@ -31,7 +32,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 - "Implement the minimal code to make the test pass" - step
 - "Run the tests and make sure they pass" - step
   - if the task cannot be run directly by agent, ask them to do so
-- "Present to them and let them do the commit"
+- "Reach the commit boundary; let the execution workflow enforce commit ownership"
 
 ## Plan Document Header
 
@@ -86,12 +87,13 @@ Expected: FAIL with "function not defined"
 Run: `pytest tests/path/test.py::test_name -v`
 Expected: PASS
 
-**Step 5: Commit**
+**Step 5: Commit boundary**
 
-Present to your human partner and let user do the commit
+Use the task's one-sentence commit message. The execution workflow determines whether its agent may create the commit.
 ```
 
 ## Remember
+
 - Exact file paths always
 - pseudocode code in plan to reduce potential cross-session handoff loss
 - Exact commands with expected output
@@ -105,17 +107,19 @@ When they approve the task decomposition, offer execution choice:
 
 **"Plan complete and saved to `.tmp/agent/plans/<filename>.md`. Two execution options:**
 
-**1. Subagent-Driven (this session)** - I dispatch fresh subagent per task, review between tasks, fast iteration
+**1. Subagent-Driven (this session)** - I use a dedicated worktree, dispatch a fresh subagent per task, and review between tasks
 
 **2. Parallel Session (separate)** - Open new session with execute-coding-plans, batch execution with checkpoints
 
-**Which approach?"**
+Which approach?"
 
 **If Subagent-Driven chosen:**
+
 - **REQUIRED SUB-SKILL:** Use subagent-driven-development
 - Stay in this session
 - Fresh subagent per task + code review
 
 **If Parallel Session chosen:**
+
 - Guide them to open new session
 - **REQUIRED SUB-SKILL:** New session uses execute-coding-plans

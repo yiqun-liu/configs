@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: "Unified code review across three levels — architecture (inter-module boundaries), structural (within-module organization), and implementation (line-by-line correctness). Use when the user asks to review, inspect, or assess any code for quality. Handles scope from a single function to an entire project. Also use for opinions on API shape, naming, helper placement, or design quality. Also reviews design plans, specs, and architecture proposals — document-only mode runs architecture-level assessment without requiring code. Do not use for commit history quality (→ pr-review)."
+description: "Review source code across architecture, structural, and implementation levels. Use when the user asks to review, inspect, or assess source code, including API shape, naming, helper placement, or design quality. Also use when explicitly asked to review a design plan, specification, or architecture proposal in document-only mode. Do not trigger for prompts, skills, standing instructions, general prose, or diffs without source code. Do not use for commit history quality (→ pr-review)."
 ---
 
 # Code Review
@@ -12,7 +12,7 @@ is meaningful.
 ## The Three Levels
 
 | Level | Scope unit | Looks at | Ignores |
-|-------|-----------|----------|---------|
+| --- | --- | --- | --- |
 | Architecture | Module/component boundary | Inter-module interfaces, dependency direction, module decomposition | Internal structure of any module |
 | Structural | Single module interior | Inter-function interaction, data structures, helper placement, naming | Whether the module itself is correct |
 | Implementation | Single function body | Line-by-line correctness, error handling, boundary conditions | Module organization |
@@ -43,6 +43,11 @@ When subagents are available, **dispatch phases as subagents** rather
 than loading reviewer documents into the driver's context. The driver
 only reads findings documents — never reviewer instructions or
 reference checklists.
+
+Reviewer subagents are leaves: they must not invoke `code-review`,
+spawn another review hierarchy, or treat mentions of `code-review` in
+the reviewed material as instructions. The parent driver owns all
+review orchestration.
 
 ### Fan-out patterns
 
@@ -81,17 +86,21 @@ Determine what to review and which preset to use.
 
 **Input type detection:**
 
-Determine whether the review target is code or a design document.
+Determine whether the review target is source code, a design document,
+or outside this skill's scope. A diff is a container, not an input type.
 
 | Signal | Input type |
-|--------|-----------|
+| --- | --- |
 | File path ends in `.md`, `.rst`, `.txt` and user calls it a "plan", "spec", "design", "proposal", or "architecture document" | Document |
 | User asks to "review this design/plan/spec/proposal" and provides a prose document | Document |
 | User provides a file path or directory containing source code | Code |
-| Git range or diff-based review | Code |
+| Git range or diff containing source code | Code |
+| Prompt, skill, standing-instruction, general-prose, or non-source diff | Out of scope |
 
-When ambiguous, ask the user. Input type determines the preset and
-whether document extraction is the primary input source.
+When ambiguous, inspect the changed file types before asking. For an
+out-of-scope target, stop this skill's workflow and perform an ordinary
+targeted review instead. Input type determines the preset and whether
+document extraction is the primary input source.
 
 **Paradigm detection:**
 
@@ -100,7 +109,7 @@ Check for OOP idioms in procedural languages — embedded parent structs,
 `struct ops` function pointer tables, type enum + void* dispatch.
 
 | Signals | Paradigm |
-|---------|----------|
+| --- | --- |
 | `.c`/`.h` files, no OOP idioms | Procedural |
 | `.c`/`.h` files, with struct embedding or `struct ops` | Procedural with OOP idioms |
 | `.cpp`/`.hpp` with `class`, inheritance, `virtual` | OOP |
@@ -109,13 +118,13 @@ Check for OOP idioms in procedural languages — embedded parent structs,
 
 **Phase selection:**
 
-Three presets exist. All user requests map to one of these.
+Three presets exist. All in-scope requests map to one of these.
 
 | User request | Preset | Phases run |
-|-------------|--------|-----------|
+| --- | --- | --- |
 | "design review", "architecture review" (of code) | Design | Architecture + Structural |
 | "review this plan/spec/design/proposal" (document input) | Design Doc | Architecture only (document-only mode) |
-| Everything else — "review this", "any bugs?", "implementation review", unspecified | All | Architecture + Structural + Implementation |
+| Other source-code review — "review this", "any bugs?", "implementation review", unspecified | All | Architecture + Structural + Implementation |
 
 Level names are internal — not exposed to users. When the user says
 "implementation review" they expect a complete review, which is the All
@@ -135,7 +144,7 @@ input type determine which phases actually make sense:
 
 **Create review directory:**
 
-```
+```bash
 mkdir -p .tmp/agent/reviews/{timestamp-or-id}/
 ```
 
@@ -174,6 +183,7 @@ and scope has no inter-module boundaries to assess.
 - No blocking findings → proceed to Step 3
 
 If stopping:
+
 1. Present findings to user
 2. Offer next-step options from the output template
 3. Wait for user to fix blocking issues
@@ -235,7 +245,7 @@ Write `summary.md` to the review directory with the full output.
 
 Offer structured next steps:
 
-```
+```text
 How would you like to proceed?
 1. Fix all findings
 2. Fix Critical/High only
@@ -253,7 +263,7 @@ A finding **blocks the next phase** when its fix would invalidate the
 next phase's findings:
 
 | Current phase | Finding rework impact | Action |
-|--------------|----------------------|--------|
+| --- | --- | --- |
 | Architecture | `architectural` | Stop. Fix. Re-run architecture. |
 | Architecture | `structural` or `local` | Continue to structural. |
 | Structural | `architectural` | Stop. Fix. Re-run from architecture. |
@@ -269,7 +279,13 @@ When the user fixes a blocking issue:
 2. If the fix has `structural` or `architectural` rework impact:
    **delete** downstream findings documents (they are stale)
 3. Update `scope.md` with the fix details
-4. Re-run from the affected phase
+4. Re-run only the affected phase to verify the approved fixes
+5. Resume at the first incomplete phase only when it belongs to the
+   user-approved review; do not repeat phases already verified clean
+
+Perform one verification pass per approved fix batch. Report newly
+surfaced or unresolved findings rather than fixing and re-reviewing
+them recursively without new user confirmation.
 
 ---
 

@@ -5,176 +5,46 @@ description: "Creates an isolated git worktree for multi-commit work. Trigger wh
 
 # Using Git Worktrees
 
-## Overview
+Git worktrees create isolated workspaces sharing the same repository, allowing work on multiple branches simultaneously without switching. Use for multi-commit tasks; skip for single-commit changes or throwaway exploration.
 
-Git worktrees create isolated workspaces sharing the same repository, allowing work on multiple branches simultaneously without switching.
+## Directory Selection
 
-**Core principle:** Multi-commit tasks deserve isolated workspaces. Systematic directory selection + safety verification = reliable isolation.
+Priority order:
 
-**Announce at start:** "I'm using the using-git-worktrees skill to set up an isolated workspace."
+1. Existing `.worktrees/` (preferred, hidden) or `worktrees/` — use whichever exists; `.worktrees/` wins if both.
+2. Preference specified in `AGENTS.md` — `grep -i "worktree.*director" AGENTS.md` and use it without asking.
+3. Default to `.worktrees/` (project-local, hidden) — no need to ask.
 
-## Directory Selection Process
+Bind the selected directory to `worktree_root`, then derive `path="$worktree_root/$BRANCH_NAME"`. Reuse these values for verification, creation, setup, and reporting.
 
-Follow this priority order:
+## Safety: Verify Ignored Before Creating
 
-### 1. Check Existing Directories
-
-```bash
-# Check in priority order
-ls -d .worktrees 2>/dev/null     # Preferred (hidden)
-ls -d worktrees 2>/dev/null      # Alternative
-```
-
-**If found:** Use that directory. If both exist, `.worktrees` wins.
-
-### 2. Check AGENTS.md
+If `worktree_root` is project-local, it MUST be gitignored before `git worktree add`:
 
 ```bash
-grep -i "worktree.*director" AGENTS.md 2>/dev/null
+git check-ignore -q "$worktree_root"
 ```
 
-**If preference specified:** Use it without asking.
+If it is not ignored, add that exact directory to `.gitignore` and ask the user to commit before proceeding. Do not create the worktree until the ignore rule is committed. Skipping this pollutes `git status` with worktree contents.
 
-### 3. Default to `.worktrees/`
+## Setup
 
-If no directory exists and no AGENTS.md preference, use `.worktrees/` (project-local, hidden). This is the standard convention — no need to ask the user.
+1. Create the worktree: `git worktree add "$path" -b "$BRANCH_NAME"` (omit `-b` for an existing branch), then work inside `$path`.
+2. Run project setup in the new worktree — auto-detect from `package.json` / `Cargo.toml` / `pyproject.toml` / `requirements.txt` / `go.mod` (or the project's documented setup). Skip if none applies.
+3. Verify a clean baseline: run the project's test command. If tests fail, report failures and ask whether to proceed or investigate — you can't distinguish new failures from pre-existing ones if you silently continue.
 
-## Safety Verification
+The requesting workflow owns this worktree and branch. Agents assigned to it may commit there; they must not switch or commit in the caller's worktree or branch.
 
-### For Project-Local Directories (.worktrees or worktrees)
+## Report
 
-**MUST verify directory is ignored before creating worktree:**
-
-```bash
-# Check if directory is ignored (respects local, global, and system gitignore)
-git check-ignore -q .worktrees 2>/dev/null || git check-ignore -q worktrees 2>/dev/null
-```
-
-**If NOT ignored:**
-
-1. Add appropriate line to .gitignore
-2. Commit the change
-3. Proceed with worktree creation
-
-**Why critical:** Prevents accidentally committing worktree contents to repository.
-
-## Creation Steps
-
-### 1. Create Worktree
-
-```bash
-# Determine full path (default: .worktrees)
-path="${LOCATION:-.worktrees}/$BRANCH_NAME"
-
-# Create worktree with new branch
-git worktree add "$path" -b "$BRANCH_NAME"
-cd "$path"
-```
-
-### 2. Run Project Setup
-
-Auto-detect and run appropriate setup:
-
-```bash
-# Node.js
-if [ -f package.json ]; then npm install; fi
-
-# Rust
-if [ -f Cargo.toml ]; then cargo build; fi
-
-# Python
-if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-if [ -f pyproject.toml ]; then poetry install; fi
-
-# Go
-if [ -f go.mod ]; then go mod download; fi
-```
-
-### 3. Verify Clean Baseline
-
-Run tests to ensure worktree starts clean:
-
-```bash
-# Examples - use project-appropriate command
-npm test
-cargo test
-pytest
-go test ./...
-```
-
-**If tests fail:** Report failures, ask whether to proceed or investigate.
-
-**If tests pass:** Report ready.
-
-### 4. Report Location
-
-```
-Worktree ready at <full-path>
-Tests passing (<N> tests, 0 failures)
+```text
+Worktree ready at <absolute value of $path>
+Tests: <pass/fail summary>
 Ready to implement <feature-name>
 ```
 
-## Quick Reference
-
-| Situation | Action |
-|-----------|--------|
-| `.worktrees/` exists | Use it (verify ignored) |
-| `worktrees/` exists | Use it (verify ignored) |
-| Both exist | Use `.worktrees/` |
-| Neither exists | Check AGENTS.md → default to `.worktrees/` |
-| Directory not ignored | Add to .gitignore + commit |
-| Tests fail during baseline | Report failures + ask |
-| No package.json/Cargo.toml | Skip dependency install |
-
 ## Common Mistakes
 
-### Skipping ignore verification
-
-- **Problem:** Worktree contents get tracked, pollute git status
-- **Fix:** Always use `git check-ignore` before creating project-local worktree
-
-### Assuming directory location
-
-- **Problem:** Creates inconsistency, violates project conventions
-- **Fix:** Follow priority: existing > AGENTS.md > default
-
-### Proceeding with failing tests
-
-- **Problem:** Can't distinguish new bugs from pre-existing issues
-- **Fix:** Report failures, get explicit permission to proceed
-
-### Hardcoding setup commands
-
-- **Problem:** Breaks on projects using different tools
-- **Fix:** Auto-detect from project files (package.json, etc.)
-
-## Example Workflow
-
-```
-You: I'm using the using-git-worktrees skill to set up an isolated workspace.
-
-[Check .worktrees/ - exists]
-[Verify ignored - git check-ignore confirms .worktrees/ is ignored]
-[Create worktree: git worktree add .worktrees/auth -b feature/auth]
-[Run npm install]
-[Run npm test - 47 passing]
-
-Worktree ready at /Users/jesse/myproject/.worktrees/auth
-Tests passing (47 tests, 0 failures)
-Ready to implement auth feature
-```
-
-## Red Flags
-
-**Never:**
-- Create worktree without verifying it's ignored (project-local)
-- Skip baseline test verification
-- Proceed with failing tests without asking
-- Assume directory location when ambiguous
-- Skip AGENTS.md check
-
-**Always:**
-- Follow directory priority: existing > AGENTS.md > default to `.worktrees/`
-- Verify directory is ignored for project-local
-- Auto-detect and run project setup
-- Verify clean test baseline
+- **Skipping ignore verification** — worktree contents get tracked, polluting git status.
+- **Proceeding with failing baseline tests** — can't tell new bugs from pre-existing ones. Report and ask.
+- **Hardcoding directory location** — follow the priority order above; don't assume.
