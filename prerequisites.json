@@ -135,7 +135,7 @@
       "description": "Python language server for Neovim (user-level install).",
       "tier": "recommended",
       "install": {
-        "script": "uv tool install \"python-lsp-server[all]\""
+        "script": "uv tool install python-lsp-server[all] --with jedi --with python-lsp-ruff --with ruff"
       },
       "check": "pylsp --version",
       "depend_on": [

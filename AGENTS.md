@@ -14,7 +14,7 @@ Top-level directories (`vim`, `git`, `nvim`, `tmux`, `clangd`, `aerc`, `mbsync`,
 
 - **No build/test/CI commands exist.**
 - `tracked-configs.json` is **gitignored** (machine-specific). Edit `tracked-configs.example` as the template.
-- `nvim/lazy-lock.json` is gitignored (Neovim plugin lockfile).
+- `nvim-pack-lock.json` is a runtime lockfile written by `vim.pack` to the deployed config dir; not in repo source (deploy is `copy`). The `compare` DIFF for `nvim` is expected.
 - `agent-configs/AGENTS.md` is a **global personal instructions file** deployed to `~/.config/opencode/AGENTS.md` — it is NOT repo-specific guidance.
 - `agent-configs/skills` is symlinked (`method: link`) — edits in repo immediately affect `~/.agents/skills`.
 - `link` entries: `collect` only validates, never copies back.

@@ -1,7 +1,5 @@
 # do not include machine-specific information
 tracked-configs.json
 
-# nvim control file
-nvim/lazy-lock.json
 .DS_Store
 __pycache__/
