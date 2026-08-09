@@ -2,6 +2,8 @@
 
 This skill converts documents to LLM-friendly Markdown. The current backend is MinerU, and the helper script reads the backend API token from an environment variable named `MINERU_TOKEN`; do not store the token in this repository.
 
+A built-in preflight auto-detects TUN-mode fake-ip DNS for the MinerU CDN and bypasses it via DNS-over-HTTPS + direct TLS, so the result-ZIP download works behind Clash Verge / mihomo / sing-box without any proxy flags. See `SKILL.md` for details.
+
 ## Windows Token Setup
 
 PowerShell session only:
@@ -52,8 +54,16 @@ To persist it, add that line to `~/.bashrc`, `~/.zshrc`, or the shell profile us
 
 ## Example
 
+Bash/zsh:
+
+```bash
+python scripts/document_to_markdown.py ~/docs/paper.pdf --out-dir .tmp/agent/document-markdown --ocr
+```
+
+PowerShell:
+
 ```powershell
 python .\scripts\document_to_markdown.py "D:\docs\paper.pdf" --out-dir ".\.tmp\agent\document-markdown" --ocr
 ```
 
-The script writes `full.md`, `manifest.json`, and extracted backend result files under the output directory.
+The script writes `full.md`, `manifest.json`, and extracted backend result files under the output directory. Under TUN mode, a `preflight: ...` line on stderr confirms the auto-bypass is active.

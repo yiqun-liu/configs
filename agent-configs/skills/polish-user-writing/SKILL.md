@@ -50,13 +50,15 @@ For each user message, inspect directly for the following issue types. The rewri
 - **Ambiguity**: sentences that could be interpreted in multiple ways
 - **Wordiness**: phrases that could be expressed more concisely without losing meaning
 - **Style & precision refinements**: word choices that are grammatically correct but could be more precise, idiomatic, or natural. This includes both one-off word swaps (e.g., "fits" → "aligns with" for abstract concepts) and generalizable patterns (e.g., "which" → "that" for restrictive clauses in AmE, adverb placement like "Probably I" → "I probably", register-appropriate vocabulary). Flag any noticeable improvement — the original is already correct, but a careful writer would appreciate the suggestion.
+- **Collocation and preposition choice**: catch meaningful, non-idiomatic combinations even when they are understandable, especially with abstract nouns. For example, use “the intuition behind X” when asking for the rationale or underlying idea of X; “the intuition of X” can be valid when referring to someone’s intuition about or perception of X. Treat this as a phrasing/style refinement, not an absolute replacement rule.
 - **Sentence Structure** (cross-clause issues): broken clause connections (dangling connectors like "just one refers"), missing verbs in parallel predicates joined by conjunctions ("has X and not Y" → "has X and is not Y"), aspect/tense inconsistency across clauses ("while we are calling" for habitual → "while we call"), clunky nominalizations spanning clause boundaries ("convention of X being Y" → "uses X like Y"), run-on constructions.
 - **Diversification**: scan for repeated transitions, connectors, sentence openers, sentence structures, adjectives, and phrases within a single message. Offer alternatives with similar meaning. This is about variety, not correctness — place in its own section, visually distinct from errors.
 
 Do NOT flag:
 - Style preferences so minor that they add noise without meaningful value (the line between "useful refinement" and "noise" is judgment-based; when in doubt, include it under Style & Precision rather than omit it)
 - Minor typos that don't affect meaning (the agent already understood them)
-- Technical shorthand or abbreviations common in the domain (e.g., "TDD", "PR", "refactor")
+- Technical shorthand or abbreviations common in the domain (e.g., "TDD", "PR", "FFN", "Q/K/V", "dim", "params", "refactor"). Preserve such shorthand in rewrites and suggestions unless it makes the meaning genuinely ambiguous; do not expand it merely for formality.
+- Non-ASCII notation introduced by the agent in a suggestion. Keep rewrites, findings, and practice prompts ASCII-only by default; use forms such as "sqrt(d_k)", "x", "->", and straight quotes instead of Unicode mathematical symbols or typographic punctuation. Preserve non-ASCII text from the user's original only when it is necessary to discuss that exact text.
 - Dialectal or regional variations that are grammatically valid (e.g., British vs American English)
 - **Sentence-start capitalization and casual proper-noun capitalization** — the user knows the rule and skips it intentionally in casual input. (Technical term/acronym capitalization like SHA-1 vs sha1 is still flagged — that's correct terminology, not casual laziness.)
 

@@ -26,6 +26,15 @@ DONE_STATES = {"done"}
 FAILED_STATES = {"failed"}
 WAIT_STATES = {"waiting-file", "uploading", "pending", "running", "converting"}
 
+# MinerU serves result ZIPs from this CDN host. Under TUN-mode proxies with
+# fake-ip DNS, the local resolver returns a dead-end 198.18.x.x / 240.x.x.x
+# range for it while the API host (mineru.net) still tunnels correctly.
+# preflight_cdn_check detects that case and fills in real IPs so the download
+# can use direct TLS with SNI preservation, with no HTTP proxy port required.
+CDN_HOST = "cdn-mineru.openxlab.org.cn"
+FALLBACK_CDN_IPS = ["8.222.80.133", "8.222.82.255"]
+FAKE_IP_PREFIXES = ("198.18.", "198.19.", "240.")
+
 
 class MinerUError(RuntimeError):
     pass
@@ -137,6 +146,89 @@ def parse_resolve_entries(entries: list[str] | None) -> dict[str, list[str]]:
     return mapping
 
 
+def is_valid_ipv4(value: str) -> bool:
+    parts = value.split(".")
+    if len(parts) != 4:
+        return False
+    for part in parts:
+        if not part.isdigit():
+            return False
+        if int(part) > 255:
+            return False
+    return True
+
+
+def is_fake_ip(ip: str) -> bool:
+    """Clash/mihomo fake-ip ranges: 198.18.0.0/15 and 240.0.0.0/4 (class E)."""
+    return ip.startswith(FAKE_IP_PREFIXES)
+
+
+def resolve_via_doh(host: str, timeout: int = 10) -> list[str]:
+    """Resolve a host to IPv4 addresses via DNS-over-HTTPS.
+
+    DoH endpoints are public IPs routed through the TUN tunnel even when the
+    local resolver returns fake-ip ranges for the CDN host. Tries Cloudflare
+    first, then Google. Returns an empty list if both fail.
+    """
+    endpoints = [
+        f"https://1.1.1.1/dns-query?name={urllib.parse.quote(host)}&type=A",
+        f"https://dns.google/resolve?name={urllib.parse.quote(host)}&type=A",
+    ]
+    for endpoint in endpoints:
+        try:
+            request = urllib.request.Request(endpoint, headers={"Accept": "application/dns-json"})
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                data = json.loads(response.read().decode("utf-8"))
+            answers = data.get("Answer") or []
+            ips = [
+                answer["data"]
+                for answer in answers
+                if answer.get("type") == 1 and is_valid_ipv4(answer.get("data", ""))
+            ]
+            if ips:
+                return ips
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError, ValueError):
+            continue
+    return []
+
+
+def preflight_cdn_check(args: argparse.Namespace) -> dict[str, list[str]]:
+    """Detect TUN-mode fake-ip routing for the MinerU CDN and auto-fill a
+    real-IP override so the result-ZIP download succeeds without an HTTP proxy.
+
+    Silent in the dominant case: when the local resolver returns a real IP for
+    the CDN host, this returns an empty map (plus any explicit ``--resolve``
+    entries) and the normal urllib download path runs unchanged. Only when
+    fake-ip is actually detected does it DoH-fetch real IPs and print a
+    one-line diagnostic to stderr.
+    """
+    resolve = parse_resolve_entries(args.resolve)
+    if CDN_HOST in resolve:
+        return resolve
+
+    try:
+        ips = socket.gethostbyname_ex(CDN_HOST)[2]
+    except (socket.gaierror, OSError):
+        return resolve
+
+    fake = [ip for ip in ips if is_fake_ip(ip)]
+    if not fake:
+        return resolve
+
+    real_ips = resolve_via_doh(CDN_HOST)
+    source = "DoH"
+    if not real_ips:
+        real_ips = list(FALLBACK_CDN_IPS)
+        source = "fallback (DoH failed; IPs may rotate)"
+    print(
+        f"preflight: {CDN_HOST} resolves to fake-ip {fake} (TUN mode); "
+        f"using real IPs {real_ips} via {source} for direct TLS + SNI",
+        file=sys.stderr,
+    )
+    resolve[CDN_HOST] = real_ips
+    return resolve
+
+
 def proxy_host_port(proxy: str) -> tuple[str, int]:
     parsed = urllib.parse.urlparse(proxy)
     if parsed.scheme not in {"http", "https"}:
@@ -154,6 +246,50 @@ def effective_proxy(explicit: str | None) -> str | None:
         if value:
             return value
     return None
+
+
+def _https_get_to_file(tls: ssl.SSLSocket, host: str, target: str, tmp_path: Path) -> None:
+    """Send an HTTP/1.1 GET over an established TLS socket and stream the
+    response body to ``tmp_path``. Validates Content-Length when present.
+
+    Shared by the proxy-CONNECT and direct-resolved download paths.
+    """
+    request = (
+        f"GET {target} HTTP/1.1\r\n"
+        f"Host: {host}\r\n"
+        "User-Agent: document-to-markdown/1.0\r\n"
+        "Accept: */*\r\n"
+        "Connection: close\r\n\r\n"
+    ).encode("ascii")
+    tls.sendall(request)
+    raw = b""
+    while b"\r\n\r\n" not in raw:
+        chunk = tls.recv(4096)
+        if not chunk:
+            break
+        raw += chunk
+    header_bytes, _, body = raw.partition(b"\r\n\r\n")
+    status = header_bytes.split(b"\r\n", 1)[0]
+    if b" 200 " not in status:
+        raise MinerUError(f"Download GET failed: {status.decode('ascii', errors='replace')}")
+    content_length: int | None = None
+    for hdr_line in header_bytes.split(b"\r\n")[1:]:
+        if hdr_line.lower().startswith(b"content-length:"):
+            content_length = int(hdr_line.split(b":", 1)[1].strip())
+            break
+    with tmp_path.open("wb") as handle:
+        written = 0
+        if body:
+            handle.write(body)
+            written += len(body)
+        while True:
+            chunk = tls.recv(1024 * 1024)
+            if not chunk:
+                break
+            handle.write(chunk)
+            written += len(chunk)
+    if content_length is not None and written != content_length:
+        raise MinerUError(f"Truncated download: expected {content_length} bytes, got {written}")
 
 
 def download_via_resolved_connect(
@@ -201,42 +337,7 @@ def download_via_resolved_connect(
                 context = ssl.create_default_context()
                 with context.wrap_socket(sock, server_hostname=host) as tls:
                     tls_wrapped = True
-                    request = (
-                        f"GET {target} HTTP/1.1\r\n"
-                        f"Host: {host}\r\n"
-                        "User-Agent: document-to-markdown/1.0\r\n"
-                        "Accept: */*\r\n"
-                        "Connection: close\r\n\r\n"
-                    ).encode("ascii")
-                    tls.sendall(request)
-                    raw = b""
-                    while b"\r\n\r\n" not in raw:
-                        chunk = tls.recv(4096)
-                        if not chunk:
-                            break
-                        raw += chunk
-                    header_bytes, _, body = raw.partition(b"\r\n\r\n")
-                    status = header_bytes.split(b"\r\n", 1)[0]
-                    if b" 200 " not in status:
-                        raise MinerUError(f"Download GET failed: {status.decode('ascii', errors='replace')}")
-                    content_length: int | None = None
-                    for hdr_line in header_bytes.split(b"\r\n")[1:]:
-                        if hdr_line.lower().startswith(b"content-length:"):
-                            content_length = int(hdr_line.split(b":", 1)[1].strip())
-                            break
-                    with tmp_path.open("wb") as handle:
-                        written = 0
-                        if body:
-                            handle.write(body)
-                            written += len(body)
-                        while True:
-                            chunk = tls.recv(1024 * 1024)
-                            if not chunk:
-                                break
-                            handle.write(chunk)
-                            written += len(chunk)
-                if content_length is not None and written != content_length:
-                    raise MinerUError(f"Truncated download: expected {content_length} bytes, got {written}")
+                    _https_get_to_file(tls, host, target, tmp_path)
             except Exception:
                 if not tls_wrapped:
                     sock.close()
@@ -250,6 +351,52 @@ def download_via_resolved_connect(
     raise MinerUError(f"Resolved CONNECT download failed after {attempts} attempts: {last_error}")
 
 
+def download_via_resolved_direct(
+    url: str,
+    path: Path,
+    ips: list[str],
+    timeout: int,
+    attempts: int,
+) -> None:
+    """Download via direct TLS to a resolved IP, preserving the original
+    hostname as SNI. No HTTP proxy required — this is the path that works
+    under TUN-mode proxies that expose no HTTP listener.
+    """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise MinerUError(f"Resolved direct download only supports https URLs: {url}")
+    host = parsed.hostname
+    port = parsed.port or 443
+    target = parsed.path or "/"
+    if parsed.query:
+        target = f"{target}?{parsed.query}"
+    tmp_path = path.with_suffix(path.suffix + ".part")
+    last_error: Exception | None = None
+
+    for attempt in range(1, attempts + 1):
+        ip = ips[(attempt - 1) % len(ips)]
+        sock = None
+        tls_wrapped = False
+        try:
+            sock = socket.create_connection((ip, port), timeout=timeout)
+            context = ssl.create_default_context()
+            with context.wrap_socket(sock, server_hostname=host) as tls:
+                tls_wrapped = True
+                _https_get_to_file(tls, host, target, tmp_path)
+            tmp_path.replace(path)
+            return
+        except Exception as exc:
+            if not tls_wrapped and sock is not None:
+                try:
+                    sock.close()
+                except OSError:
+                    pass
+            last_error = exc
+            time.sleep(min(2 * attempt, 10))
+
+    raise MinerUError(f"Resolved direct download failed after {attempts} attempts: {last_error}")
+
+
 def download(
     url: str,
     path: Path,
@@ -260,7 +407,27 @@ def download(
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(path.suffix + ".part")
+    parsed = urllib.parse.urlparse(url)
+    host = (parsed.hostname or "").lower()
     last_error: Exception | None = None
+
+    # When real IPs are known (preflight detected fake-ip, or user --resolve),
+    # skip urllib — it would connect to the fake-ip dead-end under TUN mode —
+    # and go straight to direct TLS with SNI preservation. Falls back to the
+    # proxy-CONNECT path only if a proxy is configured and direct-to-IP fails.
+    if resolve and host in resolve:
+        ips = resolve[host]
+        try:
+            download_via_resolved_direct(url, path, ips, timeout, attempts)
+            return
+        except MinerUError as exc:
+            if not proxy:
+                raise
+            last_error = exc
+        download_via_resolved_connect(url, path, proxy, ips, timeout, attempts)
+        return
+
+    # Dominant path: plain urllib with optional proxy.
     opener = urllib.request.build_opener(
         urllib.request.ProxyHandler({"http": proxy, "https": proxy}) if proxy else urllib.request.ProxyHandler({})
     )
@@ -293,12 +460,6 @@ def download(
         except (urllib.error.URLError, TimeoutError, ConnectionError, OSError, ssl.SSLError) as exc:
             last_error = exc
         time.sleep(min(2 * attempt, 10))
-
-    parsed = urllib.parse.urlparse(url)
-    host = (parsed.hostname or "").lower()
-    if proxy and resolve and host in resolve:
-        download_via_resolved_connect(url, path, proxy, resolve[host], timeout, attempts)
-        return
 
     raise MinerUError(f"Download failed after {attempts} attempts: {last_error}")
 
@@ -474,7 +635,7 @@ def parse_standard(args: argparse.Namespace, token: str) -> dict[str, Any]:
     full_zip_url = result_data.get("full_zip_url")
     if not full_zip_url:
         raise MinerUError(f"Done result did not include full_zip_url: {json.dumps(result_data, ensure_ascii=False)}")
-    resolve = parse_resolve_entries(args.resolve)
+    resolve = preflight_cdn_check(args)
     download(full_zip_url, zip_path, proxy=effective_proxy(args.proxy), resolve=resolve)
     zip_full_md = extract_full_markdown(zip_path, extract_dir, markdown_path)
     if args.no_keep_zip:
@@ -524,7 +685,7 @@ def parse_agent(args: argparse.Namespace) -> dict[str, Any]:
     markdown_url = result["data"].get("markdown_url")
     if not markdown_url:
         raise MinerUError(f"Done result did not include markdown_url: {json.dumps(result['data'], ensure_ascii=False)}")
-    resolve = parse_resolve_entries(args.resolve)
+    resolve = preflight_cdn_check(args)
     download(markdown_url, markdown_path, proxy=effective_proxy(args.proxy), resolve=resolve)
 
     manifest = {

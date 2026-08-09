@@ -9,9 +9,18 @@
         "apiKey": "{env:CSI_API_KEY}"
       },
       "models": {
-        "GLM-5.1": {
-          "name": "GLM-5.1"
-        }
+        "GLM-5.2": {
+          "name": "GLM-5.2"
+        },
+	"Qwen3.7-Max": {
+          "name": "Qwen3.7-Max"
+	},
+	"Qwen3.7-Plus": {
+          "name": "Qwen3.7-Plus"
+	},
+	"Deepseek-V4-Flash-0731": {
+          "name": "Deepseek-V4-Flash-0731"
+	}
       }
     }
   },
