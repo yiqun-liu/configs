@@ -1,50 +1,34 @@
 # Skills
 
-Agent skills for opencode CLI.
+This table is the lookup index for the available agent skills.
 
-## Origin
+| Name | Function | Trigger | Origin |
+| --- | --- | --- | --- |
+| `brainstorm` | Design exploration before execution | Explicit | Superpowers [1] |
+| `document-to-markdown` | Convert documents to Markdown | Auto | Custom |
+| `git-history-cleanup` | Rebuild a clean commit series | Explicit | Custom |
+| `gitcode-issues` | Read GitCode repository issues | Explicit | Custom |
+| `polish-user-writing` | Writing feedback + practice | Explicit | Custom |
+| `prompt-retrospective` | Review session instructions | Explicit | Custom |
+| `serious-code-review` | Thorough source-code review | Both (500+) | Multiple [1][2][3] |
+| `create-update-skill` | Create or update a skill | Auto | Anthropic [4] |
+| `tracker-normalization` | Normalize trawl trackers | Explicit | Custom |
 
-Some skills are derived from the following sources:
+`Both (500+)` means explicit for ordinary reviews and automatic for a requested
+source review of a large rewrite or feature with about 500 changed source lines.
 
-- [obra/superpowers](https://github.com/obra/superpowers) — MIT (Copyright © 2025–2026 Jesse Vincent)
-- [awesome-skills/code-review-skill](https://github.com/awesome-skills/code-review-skill) — MIT (Copyright © 2025 tt-a1i)
-- [sanyuan0704/sanyuan-skills](https://github.com/sanyuan0704/sanyuan-skills) — MIT (Copyright © 2025 sanyuan0704)
-- [anthropics/skills](https://github.com/anthropics/skills) — Apache 2.0
+## Origin sources
 
-## Skills Customized from Superpowers
+- [1] obra/superpowers — MIT, Copyright © 2025–2026 Jesse Vincent.
+- [2] awesome-skills/code-review-skill — MIT, Copyright © 2025 tt-a1i.
+- [3] sanyuan0704/sanyuan-skills — MIT, Copyright © 2025 sanyuan0704.
+- [4] anthropics/skills — Apache 2.0.
 
-- `brainstorm/` - Original: `brainstorming`
-- `write-coding-plan/` - Original: `writing-plans`
-- `execute-coding-plans/` - Original: `executing-plans`
-- `subagent-driven-development/` - Original: `subagent-driven-development`
-- `test-driven-development/` - Original: `test-driven-development`
-- `using-git-worktrees/` - Original: `using-git-worktrees`
-
-## Skills from Anthropic
-
-- `skill-creator/` - Apache 2.0 licensed guide for creating effective skills
-
-## Skills from Multiple Source
-
-- `code-review/` - Customized from `obra/superpowers/code-review`, `awesome-skills/code-review-skill`, `sanyuan0704/sanyuan-skills`
-
-## Custom Skills
-
-- `capture-knowledge/` - Create markdown memos documenting knowledge and information discovered during workflow
-- `git-history-cleanup/` - Rewrite messy branches into clean commit stacks using worktree isolation
-- `polish-user-writing/` - Review and polish the user's writing from a session, with spaced-repetition practice
-- `document-to-markdown/` - Convert documents (PDF, Word, etc.) into clean, LLM-friendly Markdown
-- `prompt-retrospective/` - Session retrospective over information conveyed — reviews agent standing instructions and user prompt quality, proposes changes
-- `tracker-normalization/` - Normalize TODO / Goal tracker sections into trawl-compatible format
-
-## TODO
-
-walk-through-codebase: analyze codebase, identify key workflows and architecture
-debug-assist: offer background information and do debug logging to review (change skills in notes to consume it)
-create-study-plan: monthly study
-language-check: check human partners expressions in the session
-record-todo / record-new-word
+[1]: https://github.com/obra/superpowers
+[2]: https://github.com/awesome-skills/code-review-skill
+[3]: https://github.com/sanyuan0704/sanyuan-skills
+[4]: https://github.com/anthropics/skills
 
 ## License
 
-See [LICENSE](LICENSE) for full MIT license text.
+See [LICENSE](LICENSE) for the full MIT license text.

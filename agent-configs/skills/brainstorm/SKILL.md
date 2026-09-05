@@ -1,129 +1,107 @@
 ---
 name: brainstorm
-description: "Explores user intent, requirements and design, inspire user before implementation or execution."
+description: "Use only when the user explicitly asks to brainstorm, explore a design, or develop a specification before execution. Turn the request into a reviewed design or decision record; do not use for an already specified implementation request."
 ---
 
-# Brainstorming Ideas Into Designs
+# Brainstorm
 
-## Overview
+Turn an ambiguous idea into a reviewed design or decision record.
 
-Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+## Scope
 
-Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design in small sections (200-300 words), checking after each section whether it looks right so far.
-Also look up the internet for related projects and ideas. Search early (after understanding core intent) and present findings as comparisons, not just links. Frame research as "Here's what others have done" with clear trade-offs against your user's direction.
+Own pre-execution design exploration; leave planning and implementation to a
+later, user-selected workflow.
 
-## The Process
+## Trigger
 
-**Understanding the idea:**
-- Check out the current project state first (files, docs, recent commits)
-- Ask questions one at a time to refine the idea
-- Prefer multiple choice questions when possible, but open-ended is fine too
-- Only one question per message - if a topic needs more exploration, break it into multiple questions
-- Focus on understanding: purpose, constraints, success criteria
+Use this skill only for an explicit request to explore or shape a design before
+execution.
 
-**Exploring approaches:**
-- Propose 2-3 different approaches with trade-offs
-- Present options conversationally with your recommendation and reasoning
-- Lead with your recommended option and explain why
+- Apply it to an idea, feature, module, process, or other decision whose design
+  is not yet settled.
+- Do not apply it to an implementation request whose design and acceptance
+  criteria are already specified.
 
-**Presenting the design:**
-- Once you believe you understand what you're building, present the design
-- Respect the structure described below.
-- Keep number of words of each sections within 300 words
-- Do not include obvious fact or trivial design choice
-- Ask after each section whether it looks right so far
-- Output format may be: design doc, decision memo, or action plan
-- Be ready to go back and clarify if something doesn't make sense
+## Inputs and outcome
 
-**Research and inspiration:**
-- Search the web early—once you understand the core intent and constraints
-- Look for: similar projects, patterns, anti-patterns, well-designed examples
-- Present findings as comparison: "X did A which is similar, but they chose B because..."
-- Quote specific techniques but always link back to user's goals
-- If nothing relevant exists or the search fails, say so
+Use the user's idea, relevant repository context, and desired control level to
+agree on the target outcome before choosing the depth or order of design work.
 
-## Document Structure
+- **Incremental outcome:** resolve decisions in the user's chosen order, such
+  as usage → design → components.
+- **End-to-end outcome:** produce an implementation-ready design that covers
+  the decisions needed for the eventual system to work as a whole.
 
-```markdown
-# [Project / Module Name] Design Doc
+End with a validated interface, design document, decision memo, or other record
+that matches the agreed outcome. Omit sections that do not affect that decision.
 
-## Goals
+## Procedure
 
-[bullet points about the goals or motivations]
+Move from the intended outcome to a validated decision in the following order.
 
-## Architecture
+### Orient
 
-[The key design ideas or paradigms applied in the design]
+Ground the discussion in the current situation and confirm the outcome before
+proposing a solution.
 
-### [Components (for multi-component project) or Functions (for simple project)]
+- Inspect relevant files, documentation, and recent changes.
+- Confirm whether the user wants incremental control or an end-to-end design.
+- Identify the purpose, boundaries, and success criteria. Ask before continuing
+  when the outcome remains ambiguous.
 
-[bullet points for each components or functions]
-[if there are 5+ components or functions, create a text graphics or mermaid graph to describe their relationship]
+### Map decision space
 
-### Work Flow
+Identify the decisions needed to reach the agreed outcome before selecting a
+solution.
 
-[mermaid sequence graph which summarizes the interactions between components]
+- Start with the decision layers relevant to the outcome: user-facing usage,
+  system design, components and interfaces, data or control flow, and
+  acceptance or validation constraints. Include validation only when it affects
+  the design; omit layers that do not affect the work.
+- Order dependent decisions before the decisions they constrain; for example,
+  settle usage before component boundaries when usage determines those
+  boundaries.
+- For each material decision, mark it as known, evidence-needed, user-owned,
+  or a non-blocking assumption to make visible for review.
+- Search comparable systems when they can reveal decision dimensions, patterns,
+  or failure modes missing from the initial framing. Use them to expand the
+  decision space, not to select or copy a solution prematurely.
 
-## Methods
+### Work through decisions
 
-### Data Structure Design Considerations
-[This secton only applies for proramming projects]
+Resolve each material decision in dependency order without overwhelming the
+user.
 
-### [Key Process N]
+- Start with the next decision whose dependencies are known or deliberately
+  recorded as assumptions.
+- Inspect the repository or research external evidence when facts can resolve
+  the decision.
+- When material alternatives remain, present two or three with their trade-offs,
+  lead with the recommendation, and explain why it best meets the criteria.
+- Ask one question per message; split a topic into several questions when
+  needed. Ask the user only about user-owned choices or genuinely ambiguous
+  outcomes.
+- Prefer multiple-choice questions when they make the decision easier; use an
+  open question when its answer must be discovered.
+- State when relevant research found no useful precedent or could not be
+  completed, and record the resulting assumption for review.
 
-[2-3 sentences to describe the sub proecsses]
+### Present and confirm
 
-[Key ideas, algorithms (for programming projects)]
+Present the resulting decisions in a form suited to the agreed outcome, then
+return to clarification when a piece exposes an unresolved assumption.
 
-## Validation
+- Make each material decision, its rationale, and any unresolved assumption
+  easy to find.
+- Keep obvious facts or trivial choices out of the deliverables.
+- When the user chose incremental control, confirm each material decision
+  before moving to the next. For an end-to-end design, confirm each material
+  section before treating it as accepted.
 
-[key test cases for programming projects, validation-follow-ups for non-programming projects]
+## Completion
 
-## References
+Finish when the agreed outcome is accepted by the user.
 
-**Related Works**
-[bullet points about popular related projects or practices]
-[key third-party dependencies for programming projects]
-
-```
-
-## After the Design
-
-**Documentation:**
-- Keep both draft and validated working designs under `.tmp/agent/designs/` unless the user asks to persist them elsewhere
-- Name temporary incremental-feature designs as `.tmp/agent/designs/YYYY-MM-DD-<topic>-design.md`
-- Try to persist the final design when it is useful beyond the current session
-- To persist a design:
-  1. Think from the future reader's perspective and refrain from using ambiguous terms like "current"
-  2. Look for existing documents that cover the same scope and update them to match the validated design
-  3. If no covering document exists, mimic the repository's current documentation convention and create a new design document there
-  4. If there are no examples or rules to follow, propose a persistent path and ask the user whether to keep that version
-
-**Implementation (only for programming projects):**
-- First evaluate the modification scope (small/medium/significant)
-- For small modifications: skip detailed implementation planning, ask user if ready to implement directly
-- For medium/large modifications: use write-coding-plans skill to create detailed implementation plan
-
-**What next (for non-programming work):**
-- Ask user what they want to do next: deeper analysis, writing, research, or move to execution
-
-## Recording Ruled-Out Options
-
-During exploration, note rejected approaches with brief rationale. Include in the final design doc under "Alternatives Considered":
-
-```markdown
-## Alternatives Considered
-
-- **Approach A**: [description] — Ruled out because [reason]
-- **Approach B**: [description] — Chosen because [why it wins over alternatives]
-```
-
-Keep explanations short (1-2 sentences). This prevents re-hashing decisions later and captures institutional knowledge.
-
-## Key Principles
-
-- **One question at a time** - Don't overwhelm with multiple questions
-- **Multiple choice preferred** - Easier to answer than open-ended when possible
-- **Explore alternatives** - Always propose 2-3 approaches before settling
-- **Incremental validation** - Present design in sections, validate each
-- **Be flexible** - Go back and clarify when something doesn't make sense
+- Report the completed design or decision record.
+- Do not start planning, implementation, or another specialized workflow until
+  the user explicitly requests it.

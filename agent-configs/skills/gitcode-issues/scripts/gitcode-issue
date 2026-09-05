@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+# gitcode-issue - read-only CLI for GitCode (gitcode.com) repository issues.
+# API: https://api.gitcode.com/api/v5 (Gitee-style). GET requests only.
+# Auth: GITCODE_TOKEN env var (GitCode personal access token).
+
+set -euo pipefail
+
+API_BASE="https://api.gitcode.com/api/v5"
+PROG="gitcode-issue"
+
+die() { echo "$PROG: $1" >&2; exit "${2:-1}"; }
+
+usage() {
+  cat <<'EOF'
+gitcode-issue - read-only CLI for GitCode repository issues
+
+Usage:
+  gitcode-issue list [options]
+  gitcode-issue show NUMBER [options]
+  gitcode-issue comments NUMBER [options]
+  gitcode-issue search QUERY [options]
+  gitcode-issue help
+
+Options:
+  --repo OWNER/REPO   Target repo (default: resolved from the origin remote)
+  --state STATE       list: open|closed|all (default: open); search: open|closed
+  --labels A,B        Filter by label names (list only)
+  --sort FIELD        created|updated (list only, default: created)
+  --direction DIR     asc|desc (list only, default: desc)
+  --creator USER      Filter by creator (list only)
+  --assignee USER     Filter by assignee (list only)
+  --page N            Page number (default: 1)
+  --per-page N        Page size; list max 100, search max 50 (default: 20)
+  --json              Print the raw JSON response instead of formatted text
+
+Auth:
+  GITCODE_TOKEN must hold a GitCode personal access token (sent as Bearer header).
+
+Exit codes:
+  0  success
+  1  usage error, network failure, or unexpected HTTP error
+  2  GITCODE_TOKEN is unset or empty
+  3  repo could not be resolved (no --repo, no origin, or origin not on gitcode.com)
+  4  HTTP 401/403: token invalid, expired, or missing scope
+  5  HTTP 404: repo or issue not found
+EOF
+}
+
+uri() { jq -rn --arg v "$1" '$v|@uri'; }
+
+CMD=""
+REPO_OPT=""
+STATE=""
+LABELS=""
+SORT=""
+DIRECTION=""
+CREATOR=""
+ASSIGNEE=""
+PAGE=1
+PER_PAGE=20
+JSON=0
+NUMBER=""
+QUERY=""
+
+[[ $# -ge 1 ]] || { usage >&2; exit 1; }
+CMD=$1
+shift
+
+case $CMD in
+  help|-h|--help) usage; exit 0 ;;
+  list|show|comments|search) ;;
+  *) die "unknown subcommand: $CMD (see '$PROG help')" ;;
+esac
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --repo) [[ $# -ge 2 ]] || die "missing value for $1"; REPO_OPT=$2; shift 2 ;;
+    --state) [[ $# -ge 2 ]] || die "missing value for $1"; STATE=$2; shift 2 ;;
+    --labels) [[ $# -ge 2 ]] || die "missing value for $1"; LABELS=$2; shift 2 ;;
+    --sort) [[ $# -ge 2 ]] || die "missing value for $1"; SORT=$2; shift 2 ;;
+    --direction) [[ $# -ge 2 ]] || die "missing value for $1"; DIRECTION=$2; shift 2 ;;
+    --creator) [[ $# -ge 2 ]] || die "missing value for $1"; CREATOR=$2; shift 2 ;;
+    --assignee) [[ $# -ge 2 ]] || die "missing value for $1"; ASSIGNEE=$2; shift 2 ;;
+    --page) [[ $# -ge 2 ]] || die "missing value for $1"; PAGE=$2; shift 2 ;;
+    --per-page) [[ $# -ge 2 ]] || die "missing value for $1"; PER_PAGE=$2; shift 2 ;;
+    --json) JSON=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    --*) die "unknown option: $1" ;;
+    *) if [[ $CMD == show || $CMD == comments ]]; then
+         [[ -z $NUMBER ]] || die "unexpected extra argument: $1"
+         NUMBER=$1
+       elif [[ $CMD == search ]]; then
+         [[ -z $QUERY ]] || die "unexpected extra argument: $1"
+         QUERY=$1
+       else
+         die "unexpected argument: $1"
+       fi
+       shift ;;
+  esac
+done
+
+command -v curl >/dev/null 2>&1 || die "curl is required but not installed"
+command -v jq >/dev/null 2>&1 || die "jq is required but not installed"
+
+[[ -n ${GITCODE_TOKEN:-} ]] || die "GITCODE_TOKEN is unset or empty (set it to a GitCode personal access token)" 2
+
+[[ $PAGE =~ ^[0-9]+$ ]] && (( PAGE >= 1 )) || die "--page must be a positive integer"
+[[ $PER_PAGE =~ ^[0-9]+$ ]] && (( PER_PAGE >= 1 )) || die "--per-page must be a positive integer"
+
+case $CMD in
+  list)
+    STATE=${STATE:-open}
+    [[ $STATE == open || $STATE == closed || $STATE == all ]] || die "--state must be open, closed, or all (list)"
+    ;;
+  search)
+    [[ -z $STATE || $STATE == open || $STATE == closed ]] || die "--state must be open or closed (search)"
+    (( PER_PAGE <= 50 )) || PER_PAGE=50
+    [[ -n $QUERY ]] || die "search requires a QUERY argument"
+    ;;
+  show|comments)
+    [[ -n $NUMBER ]] || die "$CMD requires a NUMBER argument"
+    [[ $NUMBER =~ ^[0-9]+$ ]] || die "NUMBER must be a positive integer: $NUMBER"
+    [[ -z $STATE ]] || die "--state is not valid for $CMD"
+    ;;
+esac
+
+resolve_repo() {
+  if [[ -n $REPO_OPT ]]; then
+    printf '%s' "$REPO_OPT"
+    return 0
+  fi
+  local url repo
+  url=$(git remote get-url origin 2>/dev/null) || die "--repo not given and 'git remote get-url origin' failed (not a git repo, or no origin remote)" 3
+  repo=$(printf '%s' "$url" | sed -E 's#^((https?://)|(git@))gitcode\.com[:/]##; s#\.git$##')
+  [[ $repo =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "origin is not a gitcode.com repository: $url (use --repo OWNER/REPO)" 3
+  printf '%s' "$repo"
+}
+
+api_get() {
+  local url=$1 resp status body
+  resp=$(curl -sS --max-time 30 -w '\n%{http_code}' \
+    -H "Authorization: Bearer ${GITCODE_TOKEN}" \
+    -H "Accept: application/json" \
+    "$url") || die "request failed: $url"
+  status=${resp##*$'\n'}
+  body=${resp%$'\n'*}
+  case $status in
+    200) printf '%s' "$body" ;;
+    401|403) die "HTTP $status: token invalid, expired, or lacking scope (check GITCODE_TOKEN)" 4 ;;
+    404) die "HTTP 404: not found: $url" 5 ;;
+    *) die "HTTP $status from $url: $body" ;;
+  esac
+}
+
+page_hint() {
+  local count=$1 size=$2
+  (( count == size )) && echo "$PROG: full page returned; more results may exist (--page $((PAGE + 1)))" >&2 || true
+}
+
+REPO=$(resolve_repo)
+OWNER=${REPO%%/*}
+NAME=${REPO#*/}
+
+case $CMD in
+  list)
+    params="state=$(uri "$STATE")&page=$PAGE&per_page=$PER_PAGE"
+    [[ -n $LABELS ]] && params+="&labels=$(uri "$LABELS")"
+    [[ -n $SORT ]] && { [[ $SORT == created || $SORT == updated ]] || die "--sort must be created or updated"; params+="&sort=$SORT"; }
+    [[ -n $DIRECTION ]] && { [[ $DIRECTION == asc || $DIRECTION == desc ]] || die "--direction must be asc or desc"; params+="&direction=$DIRECTION"; }
+    [[ -n $CREATOR ]] && params+="&creator=$(uri "$CREATOR")"
+    [[ -n $ASSIGNEE ]] && params+="&assignee=$(uri "$ASSIGNEE")"
+    body=$(api_get "$API_BASE/repos/$(uri "$OWNER")/$(uri "$NAME")/issues?$params")
+    if (( JSON )); then printf '%s\n' "$body"; exit 0; fi
+    printf '%s' "$body" | jq -r '.[] | "#\(.number) [\(.state)] \(.title) · labels: \([.labels[]?.name] | if length > 0 then join(", ") else "-" end) · updated \(.updated_at // .created_at // "-" | .[0:10])"'
+    page_hint "$(printf '%s' "$body" | jq 'length')" "$PER_PAGE"
+    ;;
+  show)
+    body=$(api_get "$API_BASE/repos/$(uri "$OWNER")/$(uri "$NAME")/issues/$NUMBER")
+    if (( JSON )); then printf '%s\n' "$body"; exit 0; fi
+    printf '%s' "$body" | jq -r '"#\(.number) [\(.state)] \(.title)\nrepo: \(.repository.full_name // "-") · author: \(.user.login // "-") · created: \(.created_at // "-" | .[0:10]) · updated: \(.updated_at // "-" | .[0:10])\nlabels: \([.labels[]?.name] | if length > 0 then join(", ") else "-" end)\n\n\(.body // "")"'
+    ;;
+  comments)
+    body=$(api_get "$API_BASE/repos/$(uri "$OWNER")/$(uri "$NAME")/issues/$NUMBER/comments?page=$PAGE&per_page=$PER_PAGE")
+    if (( JSON )); then printf '%s\n' "$body"; exit 0; fi
+    printf '%s' "$body" | jq -r 'if length == 0 then "(no comments)" else map("--- \(.user.login // "-") \(.created_at // "-" | .[0:10])\n\(.body // "")") | join("\n\n") end'
+    page_hint "$(printf '%s' "$body" | jq 'length')" "$PER_PAGE"
+    ;;
+  search)
+    params="q=$(uri "$QUERY")&page=$PAGE&per_page=$PER_PAGE"
+    [[ -n $REPO_OPT || -n $REPO ]] && params+="&repo=$(uri "$REPO")"
+    [[ -n $STATE ]] && params+="&state=$STATE"
+    body=$(api_get "$API_BASE/search/issues?$params")
+    if (( JSON )); then printf '%s\n' "$body"; exit 0; fi
+    printf '%s' "$body" | jq -r 'if type == "array" then . else (.items // []) end | .[] | "#\(.number) [\(.state)] \(.title) · \(.repository.full_name // "-")"'
+    ;;
+esac

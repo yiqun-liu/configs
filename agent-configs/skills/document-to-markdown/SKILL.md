@@ -1,122 +1,91 @@
 ---
 name: document-to-markdown
-description: Convert PDF, Word, PowerPoint, Excel, image, and HTML documents into clean, LLM-friendly Markdown. Use when Codex needs to parse a local file or document URL, OCR scanned documents, preserve tables/formulas where possible, extract structured Markdown and assets, or prepare source documents for downstream LLM reading, summarization, knowledge-base ingestion, or research workflows.
+description: >-
+  Use only when the user explicitly asks to convert a PDF, Word, PowerPoint,
+  Excel, image, HTML document, or document URL into Markdown. Preserve layout,
+  tables, formulas, OCR text, and assets when needed. The current MinerU
+  backend uploads documents to an external service; obtain explicit approval
+  before submitting a document unless the request already authorizes MinerU
+  conversion.
 ---
 
 # Document to Markdown
 
-## Overview
+Convert a user-selected document into Markdown with traceable artifacts for
+later reading, research, or ingestion.
 
-Use this skill when normal text extraction is likely to lose layout, tables, formulas, OCR text, images, or document structure. The current backend is MinerU; treat that as an implementation detail and expose the result as clean Markdown plus traceable conversion artifacts. A built-in preflight auto-bypasses fake-ip DNS under TUN-mode proxies so the result-ZIP download works without any proxy flags.
+## Scope
 
-Prefer the token-based standard backend for user files. Use the lightweight no-token mode only for small, low-risk documents or when no token is available.
+Own document conversion and its output artifacts; do not summarize, analyze,
+or ingest the result unless the user separately asks.
 
-## Quick Start
+## Trigger
 
-Run the bundled helper script instead of hand-writing backend API calls. Arguments are identical across shells; only the path separator differs.
+Use this skill only for an explicit request to convert a document or URL to
+Markdown.
 
-Bash/zsh:
+- Before a MinerU submission, confirm that the user authorizes external upload
+  when that authorization is not already clear from the request.
+- Do not use it for plain-text files that can be read directly.
 
-```bash
-python scripts/document_to_markdown.py ~/docs/paper.pdf --out-dir .tmp/agent/document-markdown
-```
+## Inputs and outcome
 
-PowerShell:
+Use the source, fidelity needs, and permitted backend to produce clean Markdown
+and enough artifacts to trace conversion errors.
 
-```powershell
-python .\scripts\document_to_markdown.py "D:\path\paper.pdf" --out-dir ".\.tmp\agent\document-markdown"
-```
+- Input: a local document path or HTTP(S) URL, requested page range, language,
+  and whether table, formula, or OCR fidelity matters.
+- Input: `MINERU_TOKEN` for standard MinerU mode. Do not store tokens in this
+  repository.
+- Outcome: `full.md`, a manifest, and extracted assets under
+  `.tmp/agent/document-markdown/` unless the user requests a durable location.
 
-For URL input:
+## Procedure
 
-```bash
-python scripts/document_to_markdown.py "https://example.com/report.pdf" --out-dir .tmp/agent/document-markdown
-```
+Select a backend and conversion options, run the bundled helper, then inspect
+the extracted result before handing it to later work.
 
-The script prints a JSON summary containing the task id, output directory, Markdown path, and downloaded ZIP path when applicable.
+### Select conversion mode
 
-## Workflow
+- Use standard MinerU mode for user-approved, layout-sensitive documents. Use
+  `vlm` for complex layouts, tables, or formulas; prefer `pipeline` only when
+  speed matters more than fidelity.
+- Use `MinerU-HTML` for HTML input. Enable `--ocr` for scans or image-heavy
+  documents, and use `--page-ranges` for focused PDF extraction.
+- Use lightweight `--mode agent` only for small, low-risk documents or when no
+  standard token is available. It is still a backend request, not local parsing.
 
-1. Confirm the backend credential is available before using standard mode. For the current MinerU backend, this is `MINERU_TOKEN`.
-2. Choose input mode:
-   - Local file: let the script request a signed upload URL, upload the file, poll the result, download the result ZIP, and extract `full.md`.
-   - Remote URL: let the script submit the URL task, poll the task, download the result ZIP, and extract `full.md`.
-3. Prefer `--model-version vlm` for complex PDFs with layout, formulas, and tables. Use `pipeline` when speed matters more than deep layout accuracy. Use `MinerU-HTML` only for HTML input.
-4. Enable OCR with `--ocr` for scanned PDFs or image-heavy files.
-5. Use `--page-ranges` for a focused extraction when the user only needs part of a PDF.
-6. Inspect the generated Markdown before summarizing or ingesting it. If the output contains broken image links, preserve the extracted ZIP directory so assets can be traced.
+### Convert and inspect
 
-## TUN-mode preflight
-
-Before submitting a task, the helper resolves `cdn-mineru.openxlab.org.cn` through the local DNS. If the result is in the Clash/mihomo fake-ip range (`198.18.0.0/15`, `240.0.0.0/4`), it fetches the CDN's real IPs via DNS-over-HTTPS (`1.1.1.1`, then `dns.google`) and downloads the result ZIP via direct TLS with SNI preservation — no HTTP proxy port required.
-
-This makes the helper work out of the box behind TUN-mode proxies (Clash Verge, mihomo, sing-box) that route the `.cn` CDN host `DIRECT` into the fake-ip dead-end while still tunneling the API host `mineru.net`. The dominant no-proxy scenario is untouched: when the local resolver returns a real IP, the preflight returns immediately and the plain urllib download path runs unchanged.
-
-The preflight prints one diagnostic line to stderr when it activates, e.g.:
-
-```
-preflight: cdn-mineru.openxlab.org.cn resolves to fake-ip ['198.18.0.40'] (TUN mode); using real IPs ['8.222.82.255', '8.222.80.133'] via DoH for direct TLS + SNI
-```
-
-To override the auto-detected IPs, pass `--resolve cdn-mineru.openxlab.org.cn=<ip1>,<ip2>`; the preflight respects an explicit `--resolve` and skips its own detection for that host.
-
-## Commands
-
-Standard backend, local PDF:
-
-```powershell
-python .\scripts\document_to_markdown.py ".\input.pdf" --out-dir ".\.tmp\agent\document-markdown" --ocr --language ch
-```
-
-Standard backend, local PDF behind a TUN-mode proxy:
-
-The preflight auto-detects fake-ip DNS and bypasses it (see "TUN-mode preflight" above). The manual flags below are only needed when the auto-detection fails — e.g., DoH is unreachable, or the CDN IP has rotated and the fallback list is stale.
-
-`--resolve` now works without `--proxy`: it forces direct TLS to the listed IPs with SNI preserved. Use it to override stale auto-detected IPs:
+Run `scripts/document_to_markdown.py` with the selected source and output root.
 
 ```bash
-python scripts/document_to_markdown.py ~/input.pdf --out-dir .tmp/agent/document-markdown --resolve cdn-mineru.openxlab.org.cn=8.222.80.133,8.222.82.255
+python scripts/document_to_markdown.py <source> \
+  --out-dir .tmp/agent/document-markdown
 ```
 
-If direct-to-IP is itself blocked (the CDN is only reachable through the proxy node), combine `--proxy` with `--resolve` to CONNECT through the proxy to the real IP:
+- Preserve `result.zip`, `manifest.json`, and `extracted/` when output assets,
+  tables, formulas, or image links need later inspection.
+- Inspect `full.md` for missing text, malformed tables, formulas, and asset
+  links before using it downstream.
+- Keep the original source path with `full.md` in any handoff.
 
-```bash
-python scripts/document_to_markdown.py ~/input.pdf --out-dir .tmp/agent/document-markdown --proxy http://127.0.0.1:7899 --resolve cdn-mineru.openxlab.org.cn=8.222.80.133,8.222.82.255
-```
+### Resolve failures
 
-If `HTTPS_PROXY` or `HTTP_PROXY` is set in the environment, the script uses it automatically for the plain urllib path; pass `--proxy ""` to disable it.
+Read [MinerU API notes](references/mineru-api.md) for endpoint, parameter, or
+error-code facts. Read [MinerU troubleshooting](references/mineru-troubleshooting.md)
+for upload, polling, result-download, proxy, TUN, or fake-IP failures.
 
-Standard backend, URL with page range:
+## Completion
 
-```powershell
-python .\scripts\document_to_markdown.py "https://example.com/input.pdf" --page-ranges "1-20" --out-dir ".\.tmp\agent\document-markdown"
-```
+Report the original source, selected mode, output directory, `full.md` path,
+and any known fidelity limitation.
 
-Lightweight no-token mode for small documents:
-
-```powershell
-python .\scripts\document_to_markdown.py ".\small.pdf" --mode agent --out-dir ".\.tmp\agent\document-markdown"
-```
-
-Request extra exported formats from the standard backend:
-
-```powershell
-python .\scripts\document_to_markdown.py ".\input.pdf" --extra-format html --extra-format docx
-```
-
-## Output Conventions
-
-Use a stable output directory for converted documents. Prefer `.tmp/agent/document-markdown/` for agent-run conversions unless the user asks to preserve the conversion artifacts somewhere durable. The helper creates one subdirectory per input and writes:
-
-- `full.md`: extracted Markdown for LLM use.
-- `result.zip`: standard backend output ZIP, unless `--no-keep-zip` is set.
-- `manifest.json`: task metadata, source path/URL, and result URLs.
-- `extracted/`: unpacked ZIP contents for assets and JSON outputs.
-
-Prefer handing downstream agents the `full.md` path plus the original file path. If table/formula fidelity matters, keep `manifest.json` and `extracted/` available for follow-up inspection.
+Do not delete conversion artifacts or start downstream analysis without user
+direction.
 
 ## References
 
-Read `references/mineru-api.md` only when you need current MinerU backend endpoint details, limits, parameter names, or error-code guidance.
-
-Read `references/mineru-troubleshooting.md` when MinerU upload, polling, or result download fails, or when the TUN-mode preflight can't auto-resolve the CDN (DoH unreachable, stale fallback IPs). Covers Clash Verge Rev / mihomo / sing-box on both Windows and Linux, fake-ip DNS, and local HTTP/SOCKS proxy ports.
+- [MinerU API notes](references/mineru-api.md) — current backend details.
+- [MinerU troubleshooting](references/mineru-troubleshooting.md) — conversion
+  and network failure diagnosis.
