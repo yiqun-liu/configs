@@ -1,0 +1,5 @@
+# Shebang scripts break on unix when checked out with CRLF.
+personal-tools/mate-cli/mate text eol=lf
+personal-tools/mate-cli/tests/test_mate.py text eol=lf
+# cmd.exe batch files require CRLF.
+*.cmd text eol=crlf

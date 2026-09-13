@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""mate — lightweight personal-assistant CLI backed by opencode.
+
+One persistent global opencode session; each turn is a one-shot
+`opencode run`. All state lives in ~/.local/state/mate.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+OPENCODE_BIN = os.environ.get("OPENCODE_BIN", "opencode")
+MATE_DIR = os.environ.get("MATE_DIR") or str(Path.home())
+MATE_MODEL = os.environ.get("MATE_MODEL", "")
+MATE_DEBUG = os.environ.get("MATE_DEBUG", "")
+STATE_DIR = Path(
+    os.environ.get("MATE_STATE_DIR")
+    or os.path.join(
+        os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state"), "mate"
+    )
+)
+SESSION_FILE = STATE_DIR / "session.id"
+
+# The `do` executor: Git Bash on Windows (same env var opencode itself uses),
+# plain bash elsewhere.
+BASH_BIN = os.environ.get("OPENCODE_GIT_BASH_PATH") or "bash"
+
+FENCE_RE = re.compile(r"^```(bash|sh|shell|zsh)?[ \t]*$")
+
+USAGE = """mate — personal assistant backed by opencode
+
+usage:
+  mate ask "question"        ask a question in the shared mate session
+  mate do "task"             agent explains and proposes a shell command;
+                              execute after confirmation
+  mate reset                 forget the session (next run starts fresh)
+
+environment:
+  MATE_MODEL   model override, passed as --model (e.g. "anthropic/claude-...")
+  MATE_DIR     directory the global session lives in (default $HOME)
+  MATE_DEBUG   if set, raw NDJSON of the last turn is copied to this path
+  OPENCODE_BIN opencode binary (default "opencode")
+"""
+
+
+def die(msg):
+    print(f"mate: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+# --- session state -------------------------------------------------------------
+
+
+def session_id():
+    try:
+        return SESSION_FILE.read_text().strip()
+    except FileNotFoundError:
+        return ""
+
+
+def save_session_id(sid):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    SESSION_FILE.write_text(sid + "\n")
+
+
+def reset_session():
+    try:
+        SESSION_FILE.unlink()
+    except FileNotFoundError:
+        pass
+
+
+# --- transcript parsing ---------------------------------------------------------
+
+
+def extract_text(ndjson):
+    """Concatenate completed assistant text parts, in order, deduplicated by
+    part id (latest text wins, ordered by first appearance)."""
+    first_seq = {}
+    best = {}
+    for seq, line in enumerate(ndjson.splitlines()):
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") != "text":
+            continue
+        part = event.get("part") or {}
+        if (part.get("time") or {}).get("end") is None:
+            continue
+        pid = part.get("id")
+        first_seq.setdefault(pid, seq)
+        if pid not in best or seq >= best[pid][0]:
+            best[pid] = (seq, part.get("text", ""))
+    ordered = sorted(best.items(), key=lambda kv: first_seq[kv[0]])
+    return "\n\n".join(text for _, (_, text) in ordered)
+
+
+def split_reply(reply):
+    """Split a reply into (prose, command) around the first fenced block."""
+    prose_lines, cmd_lines = [], []
+    fence = 0
+    for line in reply.splitlines():
+        if FENCE_RE.match(line):
+            fence += 1
+            if fence == 2:
+                break
+            continue
+        if fence == 0:
+            prose_lines.append(line)
+        else:
+            cmd_lines.append(line)
+    return "\n".join(prose_lines).strip(), "\n".join(cmd_lines)
+
+
+def first_session_id(ndjson):
+    for line in ndjson.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("sessionID") is not None:
+            return event["sessionID"]
+    return ""
+
+
+# --- opencode invocation --------------------------------------------------------
+
+
+def run_turn(prompt):
+    """Send one turn to the mate agent in the shared session; print the
+    assistant text. A stored session id that no longer exists is dropped and
+    the turn retried once in a fresh session."""
+    for _attempt in (1, 2):
+        call = [OPENCODE_BIN, "run", "--format", "json", "--agent", "mate", "--dir", MATE_DIR]
+        if MATE_MODEL:
+            call += ["--model", MATE_MODEL]
+        sid = session_id()
+        if sid:
+            call += ["--session", sid]
+        else:
+            call += ["--title", "mate"]
+
+        try:
+            proc = subprocess.run(
+                call + [prompt],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            die("opencode not found in PATH (set OPENCODE_BIN?)")
+
+        ndjson = "\n".join(line for line in proc.stdout.splitlines() if line.startswith("{"))
+        if MATE_DEBUG:
+            Path(MATE_DEBUG).write_text(ndjson)
+
+        new_sid = first_session_id(ndjson)
+        if new_sid:
+            if new_sid != sid:
+                save_session_id(new_sid)
+            return extract_text(ndjson)
+
+        # No sessionID in output: the stored session is gone or the run failed.
+        if sid:
+            print("mate: stored session not found, starting a new one", file=sys.stderr)
+            reset_session()
+            continue
+        die("opencode run produced no output")
+    die("opencode run failed twice")
+
+
+# --- subcommands ------------------------------------------------------------------
+
+
+def cmd_ask(question):
+    print(run_turn(f"[ASK] {question}"))
+
+
+def cmd_do(task):
+    tagged = f"[DO] {task}"
+    while True:
+        prose, cmd = split_reply(run_turn(tagged))
+        if not cmd:
+            print("mate: reply contained no fenced bash block:", file=sys.stderr)
+            print(prose, file=sys.stderr)
+            try:
+                resp = input("rework feedback (Ctrl-C to abort): ")
+            except EOFError:
+                die("aborted")
+            tagged = f"[REWORK] Your previous reply had no bash block. {resp}"
+            continue
+        if prose:
+            print(prose)
+        print(f"\n── proposed command ──\n{cmd}\n─────────────────────")
+        try:
+            resp = input("execute? [Y=yes | rework: <feedback> | other=abort] ")
+        except EOFError:
+            die("aborted")
+        if resp.lower() in ("y", "yes"):
+            break
+        if resp.startswith("rework:"):
+            tagged = f"[REWORK] {resp[len('rework:'):].lstrip()}"
+            continue
+        die("aborted")
+
+    try:
+        proc = subprocess.run(
+            [BASH_BIN, "-c", cmd],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except FileNotFoundError:
+        die("bash not found for execution (set OPENCODE_GIT_BASH_PATH?)")
+    out = proc.stdout.rstrip("\n")
+
+    if out:
+        print(out)
+    print(f"── exit: {proc.returncode} ──")
+
+    # Feed the outcome back so the assistant can self-correct on the next turn.
+    ack = run_turn(f"[RESULT] exit={proc.returncode}; last output (tail): {out[-500:]}")
+    if ack:
+        print(f"mate: {ack.splitlines()[0]}")
+    sys.exit(proc.returncode)
+
+
+# --- dispatch -----------------------------------------------------------------------
+
+
+def main(argv):
+    cmd = argv[0] if argv else ""
+    if cmd in ("ask", "do"):
+        if len(argv) < 2:
+            noun = "question" if cmd == "ask" else "task"
+            die(f'usage: mate {cmd} "{noun}"')
+        arg = " ".join(argv[1:])
+        if cmd == "ask":
+            cmd_ask(arg)
+        else:
+            cmd_do(arg)
+    elif cmd == "reset":
+        reset_session()
+        print("mate: session state cleared")
+    elif cmd in ("-h", "--help", "help", ""):
+        print(USAGE)
+    else:
+        die(f"unknown subcommand: {cmd} (try: mate help)")
+    return 0
+
+
+if __name__ == "__main__":
+    # Keep the unicode banners printable on legacy Windows code pages.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except Exception:
+            pass
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except KeyboardInterrupt:
+        print("mate: aborted", file=sys.stderr)
+        sys.exit(130)

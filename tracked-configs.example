@@ -84,6 +84,22 @@
       ]
     },
     {
+      "id": "mate-agent",
+      "source": "agent-configs/opencode/agents/mate.md",
+      "method": "link",
+      "targets": [
+        "~/.config/opencode/agents/mate.md"
+      ]
+    },
+    {
+      "id": "mate-cli",
+      "source": "personal-tools/mate-cli/mate",
+      "method": "link",
+      "targets": [
+        "~/.local/bin/mate"
+      ]
+    },
+    {
       "id": "vscode-settings",
       "source": "vscode/settings.json",
       "method": "copy",

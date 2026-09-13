@@ -8,7 +8,7 @@ No build system, tests, CI, or package manager.
 
 ## Architecture
 
-Top-level directories (`vim`, `git`, `nvim`, `tmux`, `clangd`, `aerc`, `mbsync`, `vscode`, `agent-configs`) are **independent config domains** — they don't cross-reference each other. When exploring a config issue, stay within the relevant directory; no need to peek into others.
+Top-level directories (`vim`, `git`, `nvim`, `tmux`, `clangd`, `aerc`, `mbsync`, `vscode`, `agent-configs`, `personal-tools`) are **independent config domains** — they don't cross-reference each other. When exploring a config issue, stay within the relevant directory; no need to peek into others.
 
 ## Key Gotchas
 
@@ -17,6 +17,7 @@ Top-level directories (`vim`, `git`, `nvim`, `tmux`, `clangd`, `aerc`, `mbsync`,
 - `nvim-pack-lock.json` is a runtime lockfile written by `vim.pack` to the deployed config dir; not in repo source (deploy is `copy`). The `compare` DIFF for `nvim` is expected.
 - `agent-configs/AGENTS.md` is a **global personal instructions file** deployed to `~/.config/opencode/AGENTS.md` — it is NOT repo-specific guidance.
 - `agent-configs/skills` is symlinked (`method: link`) — edits in repo immediately affect `~/.agents/skills`.
+- `personal-tools/mate-cli` deploys through the `mate-cli` (`~/.local/bin/mate`) and `mate-agent` (`~/.config/opencode/agents/mate.md`) link entries; the mate agent definition lives at `agent-configs/opencode/agents/mate.md` and must change in lockstep with the wrapper's tagged message protocol.
 - `link` entries: `collect` only validates, never copies back.
 - After editing config files, follow the safety rules below to deploy to the system via config manager. See [`tools/config-manager/usage.md`](tools/config-manager/usage.md) for full deployment command reference.
 
@@ -26,4 +27,5 @@ Top-level directories (`vim`, `git`, `nvim`, `tmux`, `clangd`, `aerc`, `mbsync`,
 2. **Never deploy without an explicit `--id`.** Running `./manage.sh deploy` without `--id` operates on every entry — never do this.
 3. **Ask for explicit permission before `deploy`.** Do not run `./manage.sh deploy` unless the user explicitly says to.
 4. **Watch for local-only changes.** If `compare` shows differences where the target has content the repo source lacks, those local changes will be overwritten by `deploy`. Ask the user for confirmation before proceeding.
+
 - Windows: directory links fall back to junctions; file symlinks may need privilege elevation.

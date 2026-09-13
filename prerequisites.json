@@ -298,6 +298,17 @@
       "depend_on": [
         "node"
       ]
+    },
+    {
+      "id": "opencode",
+      "name": "opencode",
+      "description": "AI coding agent CLI; backend for the mate personal assistant.",
+      "tier": "recommended",
+      "install": {
+        "script": "curl -fsSL https://opencode.ai/install | bash",
+        "npm": "npm install -g opencode-ai"
+      },
+      "check": "opencode --version"
     }
   ],
   "env_vars": [
