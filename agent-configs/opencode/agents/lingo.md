@@ -1,6 +1,7 @@
 ---
 description: One-shot language helper behind `mate lingo` — dictionary entries, grammar answers, natural rewrites
 mode: primary
+# model: <provider/model>   # uncomment to pin a model for this agent
 permission:
   edit: deny
   bash: deny

@@ -76,6 +76,14 @@
       ]
     },
     {
+      "id": "opencode-home-project",
+      "source": "agent-configs/opencode/home/opencode.json",
+      "method": "link",
+      "targets": [
+        "~/.opencode/opencode.json"
+      ]
+    },
+    {
       "id": "opencode-agents",
       "source": "agent-configs/AGENTS.md",
       "method": "copy",

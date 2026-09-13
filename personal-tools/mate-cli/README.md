@@ -84,6 +84,31 @@ mate reset                          # start a fresh session next run
 | `OPENCODE_BIN`           | `opencode` | opencode binary path                                           |
 | `OPENCODE_GIT_BASH_PATH` | `bash`     | bash used to run `do` commands (Windows: point at Git Bash)    |
 
+### Model selection
+
+The model resolves in this order (first match wins):
+
+1. `MATE_MODEL` env var (passed as `--model provider/model`)
+2. The agent's frontmatter `model:` (see the commented line in
+   `lingo.md`; `mate.md` leaves it unset)
+3. Top-level `model` in `~/.config/opencode/opencode.json`
+4. opencode's implicit default (first authenticated provider)
+
+To pin a model per agent, set `model:` in its frontmatter; to override
+per call, use `MATE_MODEL`.
+
+### Latency notes
+
+Per-turn cost = opencode boot + MCP server startup + model/network. The
+first two can be reduced without touching the shared global config:
+
+- MCP servers can be disabled per project. mate sessions run with
+  `--dir $HOME`, so `~/.opencode/opencode.json` (tracked as the
+  `opencode-home-project` entry) scopes MCP startup down to mate
+  sessions only; set `"enabled": false` per server there.
+- The removed lazy-server design (see Evolution) is the next lever if
+  per-turn latency still matters.
+
 ## Windows
 
 Requirements: Python 3 on PATH (`python`), opencode (`npm install -g

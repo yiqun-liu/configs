@@ -84,6 +84,10 @@ FAKE_OPENCODE = """#!/usr/bin/env bash
 echo "ARGS: $*" >> "$FAKE_LOG"
 [ -n "$FAKE_DRAIN_STDIN" ] && cat > /dev/null
 prompt="${!#}"
+if [[ "$prompt" == *"FAIL"* ]]; then
+  printf '%s\\n' '{"type":"error","sessionID":"ses_fake123","error":{"name":"UnknownError","data":{"message":"Unexpected server error."}}}'
+  exit 0
+fi
 sid=""; prev=""
 for a in "$@"; do [[ "$prev" == "--session" ]] && sid="$a"; prev="$a"; done
 if [[ "$sid" == "ses_dead" ]]; then echo "Session not found" >&2; exit 1; fi
@@ -227,6 +231,17 @@ class WrapperIntegrationTest(unittest.TestCase):
         proc = self.mate_cli("frobnicate")
         self.assertEqual(proc.returncode, 1)
         self.assertIn("unknown subcommand", proc.stderr)
+
+    def test_provider_error_surfaces(self):
+        proc = self.mate_cli("ask", "make it FAIL")
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("opencode error: Unexpected server error.", proc.stderr)
+        self.assertEqual(proc.stdout.strip(), "")
+
+    def test_provider_error_surfaces_lingo(self):
+        proc = self.mate_cli("lingo", "FAIL word")
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("opencode error: Unexpected server error.", proc.stderr)
 
 
 if __name__ == "__main__":
