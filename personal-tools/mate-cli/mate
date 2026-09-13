@@ -9,14 +9,27 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
+import tempfile
+import time
+import urllib.request
 from pathlib import Path
 
 OPENCODE_BIN = os.environ.get("OPENCODE_BIN", "opencode")
 MATE_DIR = os.environ.get("MATE_DIR") or str(Path.home())
 MATE_MODEL = os.environ.get("MATE_MODEL", "")
 MATE_DEBUG = os.environ.get("MATE_DEBUG", "")
+MATE_PORT = os.environ.get("MATE_PORT", "")
+MATE_SERVER = os.environ.get("MATE_SERVER", "1").lower() not in ("0", "false", "no")
+MATE_START_TIMEOUT = float(os.environ.get("MATE_START_TIMEOUT", "15"))
+# Records the lazy server's port, or -1 after a failed boot (breaker marker).
+# Spec path is /tmp/mate_server_port; fall back to the system temp dir only
+# where /tmp does not exist (Windows).
+_PORT_FILE_DEFAULT = "/tmp/mate_server_port" if Path("/tmp").is_dir() \
+    else str(Path(tempfile.gettempdir()) / "mate_server_port")
+PORT_FILE = Path(os.environ.get("MATE_PORT_FILE") or _PORT_FILE_DEFAULT)
 STATE_DIR = Path(
     os.environ.get("MATE_STATE_DIR")
     or os.path.join(
@@ -39,12 +52,17 @@ usage:
                               execute after confirmation
   mate lingo "text"          one-shot language help (word/grammar/rewrite)
   mate reset                 forget the session (next run starts fresh)
+  mate stop                  dispose the lazily started opencode server
 
 environment:
   MATE_MODEL   model override, passed as --model (e.g. "anthropic/claude-...")
   MATE_DIR     directory the global session lives in (default $HOME)
   MATE_DEBUG   if set, raw NDJSON of the last turn is copied to this path
   OPENCODE_BIN opencode binary (default "opencode")
+  MATE_PORT    fixed port for the lazy server (default: auto-picked, recorded
+               in /tmp/mate_server_port; -1 marks a failed boot and skips
+               server use until `mate stop` clears it)
+  MATE_SERVER  set 0 to force one-shot runs without a server
 """
 
 
@@ -180,6 +198,119 @@ def first_error(ndjson):
     return ""
 
 
+# --- lazy backend ---------------------------------------------------------------
+
+
+def read_port_file():
+    """Port recorded by a previous run, -1 failure marker, or None."""
+    try:
+        return int(PORT_FILE.read_text().strip())
+    except (FileNotFoundError, ValueError, OSError):
+        return None
+
+
+def write_port_file(value):
+    try:
+        PORT_FILE.write_text(f"{value}\n")
+    except OSError:
+        pass
+
+
+def configured_port():
+    if not MATE_PORT:
+        return None
+    try:
+        return int(MATE_PORT)
+    except ValueError:
+        die(f"invalid MATE_PORT: {MATE_PORT}")
+
+
+def pick_free_port():
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def server_url(port):
+    return f"http://127.0.0.1:{port}"
+
+
+def server_healthy(port):
+    try:
+        with urllib.request.urlopen(f"{server_url(port)}/global/health", timeout=2) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def ensure_server():
+    """Port of an opencode server to connect to, or None for one-shot runs.
+
+    The port in use (or -1 after a failed boot) persists in the port file,
+    so later invocations reuse the server or skip booting entirely.
+    MATE_SERVER=0 disables the lazy server; `mate stop` clears the file.
+
+    Runs connect with `--port`: like `--attach` it targets the running
+    server, but it also streams the full assistant event set.
+    """
+    if not MATE_SERVER:
+        return None
+    recorded = read_port_file()
+    if recorded == -1:
+        return None
+    port = configured_port() or recorded or pick_free_port()
+
+    if server_healthy(port):
+        return port
+    try:
+        popen = dict(
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if os.name == "nt":
+            popen["creationflags"] = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        else:
+            popen["start_new_session"] = True
+        subprocess.Popen(
+            [OPENCODE_BIN, "serve", "--hostname", "127.0.0.1", "--port", str(port)],
+            **popen,
+        )
+    except FileNotFoundError:
+        die("opencode not found in PATH (set OPENCODE_BIN?)")
+    deadline = time.monotonic() + MATE_START_TIMEOUT
+    while time.monotonic() < deadline:
+        time.sleep(0.25)
+        if server_healthy(port):
+            write_port_file(port)
+            return port
+    write_port_file(-1)
+    print(
+        f"mate: server did not come up on :{port}; falling back to one-shot runs",
+        file=sys.stderr,
+    )
+    return None
+
+
+def cmd_stop():
+    port = configured_port() or read_port_file()
+    if port and port != -1 and server_healthy(port):
+        try:
+            req = urllib.request.Request(f"{server_url(port)}/instance/dispose", method="POST")
+            with urllib.request.urlopen(req, timeout=2):
+                pass
+        except Exception as exc:
+            die(f"could not dispose server: {exc}")
+        print(paint(f"mate: disposed server on :{port}", DIM))
+    else:
+        print(paint("mate: no server running", DIM))
+    # Clear the port (or -1 marker) so the next run boots fresh.
+    try:
+        PORT_FILE.unlink()
+    except FileNotFoundError:
+        pass
+
+
 # --- opencode invocation --------------------------------------------------------
 
 
@@ -199,6 +330,9 @@ def run_turn(prompt, agent="mate", persist=True):
             call += ["--session", sid]
         else:
             call += ["--title", agent]
+        attach = ensure_server()
+        if attach:
+            call += ["--port", str(attach)]
 
         try:
             proc = subprocess.run(
@@ -326,6 +460,8 @@ def main(argv):
     elif cmd == "reset":
         reset_session()
         print(paint("mate: session state cleared", DIM))
+    elif cmd == "stop":
+        cmd_stop()
     elif cmd in ("-h", "--help", "help", ""):
         print(USAGE)
     else:

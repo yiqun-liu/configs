@@ -13,12 +13,17 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 MATE = HERE.parent / "mate"
+
+PORT = 4599
+ATTACH = f"--port {PORT}"
 
 
 def load_mate():
@@ -104,6 +109,32 @@ esac
 
 @unittest.skipUnless(os.name == "posix", "fake opencode uses a bash shebang")
 class WrapperIntegrationTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.server.get_hits.append(self.path)
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b'{"healthy":true}')
+
+            def do_POST(self):
+                self.server.dispose_hits.append(self.path)
+                self.send_response(200)
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        cls.httpd = HTTPServer(("127.0.0.1", PORT), Handler)
+        cls.httpd.dispose_hits = []
+        cls.httpd.get_hits = []
+        threading.Thread(target=cls.httpd.serve_forever, daemon=True).start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.httpd.shutdown()
+
     def setUp(self):
         self.work = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(self.work)], check=False))
@@ -118,9 +149,17 @@ class WrapperIntegrationTest(unittest.TestCase):
             OPENCODE_BIN=str(fake),
             MATE_STATE_DIR=str(self.state),
             MATE_DEBUG=str(self.work / "last.ndjson"),
+            MATE_PORT=str(PORT),
+            MATE_PORT_FILE=str(self.work / "port"),
             FAKE_LOG=str(self.fake_log),
         )
         self.home = os.environ["HOME"]
+
+    def write_port(self, value):
+        Path(self.env["MATE_PORT_FILE"]).write_text(f"{value}\n")
+
+    def read_port(self):
+        return Path(self.env["MATE_PORT_FILE"]).read_text().strip()
 
     def mate_cli(self, *args, input_text=None):
         return subprocess.run(
@@ -155,14 +194,14 @@ class WrapperIntegrationTest(unittest.TestCase):
         self.assertEqual((self.state / "session.id").read_text().strip(), "ses_fake123")
         self.assertEqual(
             self.run_lines()[0],
-            f"ARGS: run --format json --agent mate --dir {self.home} --title mate [ASK] hi",
+            f"ARGS: run --format json --agent mate --dir {self.home} --title mate {ATTACH} [ASK] hi",
         )
 
         proc = self.mate_cli("ask", "again")
         self.assertEqual(proc.stdout.strip(), "the answer is 42")
         self.assertEqual(
             self.run_lines()[1],
-            f"ARGS: run --format json --agent mate --dir {self.home} --session ses_fake123 [ASK] again",
+            f"ARGS: run --format json --agent mate --dir {self.home} --session ses_fake123 {ATTACH} [ASK] again",
         )
 
     def test_do_flow_with_prose(self):
@@ -202,7 +241,7 @@ class WrapperIntegrationTest(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "the answer is 42")
         self.assertEqual(
             self.run_lines()[-1],
-            f"ARGS: run --format json --agent lingo --dir {self.home} --title lingo slump",
+            f"ARGS: run --format json --agent lingo --dir {self.home} --title lingo {ATTACH} slump",
         )
         # The shared mate session is neither consumed nor overwritten.
         self.assertEqual((self.state / "session.id").read_text(), "ses_keep\n")
@@ -221,6 +260,72 @@ class WrapperIntegrationTest(unittest.TestCase):
         proc = self.mate_cli("lingo")
         self.assertEqual(proc.returncode, 1)
         self.assertIn("usage: mate lingo", proc.stderr)
+
+    def test_mate_server_0_forces_one_shot(self):
+        proc = subprocess.run(
+            [sys.executable, str(MATE), "ask", "hi"],
+            capture_output=True, text=True,
+            env=dict(self.env, MATE_SERVER="0"),
+        )
+        self.assertEqual(proc.stdout.strip(), "the answer is 42")
+        self.assertNotIn("--attach", self.run_lines()[-1])
+
+    def test_stop_disposes_server(self):
+        before = len(self.httpd.dispose_hits)
+        proc = self.mate_cli("stop")
+        self.assertIn("disposed server", proc.stdout)
+        self.assertEqual(len(self.httpd.dispose_hits), before + 1)
+        self.assertFalse(Path(self.env["MATE_PORT_FILE"]).exists())
+
+    def test_port_file_reuse_without_env_port(self):
+        env = {k: v for k, v in self.env.items() if k != "MATE_PORT"}
+        self.write_port(PORT)
+        proc = subprocess.run(
+            [sys.executable, str(MATE), "ask", "hi"],
+            capture_output=True, text=True, env=env,
+        )
+        self.assertEqual(proc.stdout.strip(), "the answer is 42")
+        self.assertTrue(any(f"{ATTACH}" in l for l in self.run_lines()))
+        self.assertEqual(self.read_port(), str(PORT))
+
+    def test_failure_marker_skips_server_entirely(self):
+        self.write_port(-1)
+        gets_before = len(self.httpd.get_hits)
+        proc = self.mate_cli("ask", "hi")
+        self.assertEqual(proc.stdout.strip(), "the answer is 42")
+        self.assertFalse(any("--attach" in l for l in self.run_lines()))
+        self.assertEqual(len(self.httpd.get_hits), gets_before)
+
+    def test_boot_failure_writes_marker_and_next_run_skips(self):
+        env = dict(self.env, MATE_START_TIMEOUT="0.2")
+        env.pop("MATE_PORT")
+        proc = subprocess.run(
+            [sys.executable, str(MATE), "ask", "hi"],
+            capture_output=True, text=True, env=env,
+        )
+        self.assertEqual(proc.stdout.strip(), "the answer is 42")
+        self.assertIn("falling back to one-shot runs", proc.stderr)
+        self.assertEqual(self.read_port(), "-1")
+        # The fake was asked to serve exactly once; the next run must not retry.
+        serve_calls = [l for l in self.fake_log.read_text().splitlines() if "serve" in l]
+        self.assertEqual(len(serve_calls), 1)
+        proc = subprocess.run(
+            [sys.executable, str(MATE), "ask", "again"],
+            capture_output=True, text=True, env=env,
+        )
+        self.assertEqual(proc.stdout.strip(), "the answer is 42")
+        serve_calls = [l for l in self.fake_log.read_text().splitlines() if "serve" in l]
+        self.assertEqual(len(serve_calls), 1)
+
+    def test_stop_clears_failure_marker(self):
+        env = {k: v for k, v in self.env.items() if k != "MATE_PORT"}
+        self.write_port(-1)
+        proc = subprocess.run(
+            [sys.executable, str(MATE), "stop"],
+            capture_output=True, text=True, env=env,
+        )
+        self.assertIn("no server running", proc.stdout)
+        self.assertFalse(Path(self.env["MATE_PORT_FILE"]).exists())
 
     def test_no_args_prints_usage(self):
         proc = self.mate_cli()

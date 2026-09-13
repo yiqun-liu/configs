@@ -41,6 +41,7 @@ mate lingo slump                    # dictionary entry
 mate lingo "affect vs effect"       # grammar
 mate lingo - < draft.txt            # natural rewrite via stdin
 mate reset                          # start a fresh session next run
+mate stop                           # dispose the lazily started server
 ```
 
 ## Design notes
@@ -51,9 +52,15 @@ mate reset                          # start a fresh session next run
   --format json` puts `sessionID` on every event line) and persists it; later
   runs pass `--session`. A dead session id is detected (empty output) and
   recreated once.
-- **One-shot turns.** Each invocation is a plain `opencode run`; the wrapper
-  manages no background processes. This trades ~1s of per-turn startup for
-  simplicity (no ports, no orphaned servers, no fallback paths).
+- **Lazy backend.** The first run starts `opencode serve` detached on a
+  local port; later runs connect via `--port` (same target as `--attach`,
+  but it also streams the full assistant event set), so boot and app init
+  are paid once per server lifetime instead of per turn. With `MATE_PORT`
+  unset, a free port is auto-picked and recorded in
+  `/tmp/mate_server_port`; a failed boot writes `-1` there and later runs
+  skip the server (one-shot) until `mate stop` clears the file. If the
+  server cannot start at all, the run falls back to one-shot mode.
+  `MATE_SERVER=0` disables the lazy server entirely.
 - **Persistent instructions.** The agent body in `mate.md` and the user-level
   `~/.config/opencode/AGENTS.md` are injected as system prompt on every
   request (assembled per call in opencode's `prompt.ts`), so they survive
@@ -78,11 +85,13 @@ mate reset                          # start a fresh session next run
 
 | Env var                  | Default    | Meaning                                                        |
 | ------------------------ | ---------- | -------------------------------------------------------------- |
-| `MATE_MODEL`             | unset      | passed as `--model provider/x`                                 |
+| `MATE_MODEL`             | unset      | passed as `--model provider/model`                             |
 | `MATE_DIR`               | home dir   | session directory                                              |
 | `MATE_DEBUG`             | unset      | copy last turn's NDJSON here                                   |
 | `OPENCODE_BIN`           | `opencode` | opencode binary path                                           |
 | `OPENCODE_GIT_BASH_PATH` | `bash`     | bash used to run `do` commands (Windows: point at Git Bash)    |
+| `MATE_PORT`              | auto-pick  | fixed port for the lazy server                                 |
+| `MATE_SERVER`            | `1`        | set `0` to force one-shot runs without a server                |
 
 ### Model selection
 
@@ -106,8 +115,8 @@ first two can be reduced without touching the shared global config:
   `--dir $HOME`, so `~/.opencode/opencode.json` (tracked as the
   `opencode-home-project` entry) scopes MCP startup down to mate
   sessions only; set `"enabled": false` per server there.
-- The removed lazy-server design (see Evolution) is the next lever if
-  per-turn latency still matters.
+- Runs attach to the lazily started server (see design notes), so the
+  remaining per-turn cost is the `opencode run` CLI boot plus the model.
 
 ## Windows
 
@@ -150,14 +159,15 @@ After deploying via `./manage.sh deploy --id mate-cli --id mate-agent`:
 4. `mate reset` then a fresh turn recreates the session.
 5. `mate lingo slump` prints a dictionary entry; `mate lingo - < file`
    rewrites; the mate session id file is unchanged by lingo calls.
+6. Cold start: `mate stop`, remove `/tmp/mate_server_port`, then `mate ask`
+   boots the server and records the port; a second run attaches without
+   booting; a forced failure (`MATE_START_TIMEOUT=0.1`) writes `-1` and
+   later runs skip the server until `mate stop`.
 
 ## Evolution
 
 Removed during the ask/do simplification, candidates to revisit if needs
 change:
 
-- **Lazy server + `--attach`** — `opencode serve` started on demand to avoid
-  per-turn cold boot, plus a `mate stop` to dispose it. Dropped for
-  simplicity; reintroduce behind a flag if per-turn latency matters.
 - **`mate export` / `mate session`** — passthroughs to `opencode export` and
   the stored id. Use those directly when needed.

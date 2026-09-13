@@ -40,8 +40,13 @@ Conventions for AI agents working in this directory.
   trigger the single-retry recreate in `run_turn`.
 - `lingo` runs with `persist=False`: it must never read or write the session
   state, and it must not disturb an existing mate session.
-- Each turn is a one-shot `opencode run`; keep the wrapper free of background
-  server management.
+- The opencode server is lazily started and reached via `--port` (prefer it
+  over `--attach`: same target, but `--attach` drops assistant text events
+  in opencode 1.18.x). The port in use (or the `-1` boot-failure marker)
+  persists in the port file (`MATE_PORT_FILE`, default
+  `/tmp/mate_server_port`); a `-1` record makes runs skip the server until
+  `mate stop` clears the file. Keep the one-shot fallback for a server that
+  cannot start, and the `MATE_SERVER=0` escape hatch.
 
 ## Docs
 
