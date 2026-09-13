@@ -85,10 +85,10 @@
     },
     {
       "id": "mate-agent",
-      "source": "agent-configs/opencode/agents/mate.md",
+      "source": "agent-configs/opencode/agents",
       "method": "link",
       "targets": [
-        "~/.config/opencode/agents/mate.md"
+        "~/.config/opencode/agents"
       ]
     },
     {

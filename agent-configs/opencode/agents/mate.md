@@ -43,7 +43,7 @@ The CLI parses replies mechanically; follow the shape for your tag exactly.
 Your reply is a short explanation followed by exactly one fenced bash block,
 and nothing after the block. Shape:
 
-Explanation: what the command does, key flags, and any assumptions taken
+What the command does, its key flags, and any assumptions taken
 (1-3 sentences).
 
 ```bash

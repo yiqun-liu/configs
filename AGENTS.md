@@ -17,7 +17,7 @@ Top-level directories (`vim`, `git`, `nvim`, `tmux`, `clangd`, `aerc`, `mbsync`,
 - `nvim-pack-lock.json` is a runtime lockfile written by `vim.pack` to the deployed config dir; not in repo source (deploy is `copy`). The `compare` DIFF for `nvim` is expected.
 - `agent-configs/AGENTS.md` is a **global personal instructions file** deployed to `~/.config/opencode/AGENTS.md` — it is NOT repo-specific guidance.
 - `agent-configs/skills` is symlinked (`method: link`) — edits in repo immediately affect `~/.agents/skills`.
-- `personal-tools/mate-cli` deploys through the `mate-cli` (`~/.local/bin/mate`) and `mate-agent` (`~/.config/opencode/agents/mate.md`) link entries; the mate agent definition lives at `agent-configs/opencode/agents/mate.md` and must change in lockstep with the wrapper's tagged message protocol.
+- `personal-tools/mate-cli` deploys through the `mate-cli` (`~/.local/bin/mate`) and `mate-agent` (whole `agent-configs/opencode/agents` dir → `~/.config/opencode/agents`) link entries; the `mate.md`/`lingo.md` agent definitions must change in lockstep with the wrapper's tagged message protocol.
 - `link` entries: `collect` only validates, never copies back.
 - After editing config files, follow the safety rules below to deploy to the system via config manager. See [`tools/config-manager/usage.md`](tools/config-manager/usage.md) for full deployment command reference.
 

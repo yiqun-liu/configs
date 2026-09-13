@@ -8,6 +8,9 @@ persistent session:
   shows both, executes on `Y`, regenerates on `rework: <feedback>`, and
   reports the exit status and output tail back into the session so the agent
   self-corrects.
+- `mate lingo "..."` — one-shot language help, no shared session: pass a
+  word (dictionary entry), a grammar question, or text to rewrite (stdin via
+  `-`); the agent infers the intent.
 - `mate reset` — forget the session; the next run starts fresh.
 
 The wrapper is a single stdlib-only Python 3 script; the same file runs on
@@ -15,16 +18,17 @@ macOS, Linux, and Windows.
 
 ## Files
 
-| File       | Installs to                         | Role                       |
-| ---------- | ----------------------------------- | -------------------------- |
-| `mate`     | `~/.local/bin/mate`                 | python wrapper             |
-| `mate.cmd` | `%USERPROFILE%\.local\bin\mate.cmd` | cmd/PowerShell shim (Win)  |
+| File         | Installs to                             | Role                       |
+| ------------ | --------------------------------------- | -------------------------- |
+| `mate`       | `~/.local/bin/mate`                     | python wrapper             |
+| `mate.cmd`   | `%USERPROFILE%\.local\bin\mate.cmd`     | cmd/PowerShell shim (Win)  |
+| `agents/`    | `~/.config/opencode/agents/`            | mate + lingo agent prompts |
 
-Both deploy through the repo config manager (`tracked-configs.json` entries
-`mate-cli`, `mate-agent`, and on Windows `mate-cmd`); there is no separate
-installer. The agent definition lives at `agent-configs/opencode/agents/mate.md`
-in the repo (deployed to opencode's global agents dir) and changes in lockstep
-with the wrapper's tagged message protocol.
+All deploy through the repo config manager (`tracked-configs.json` entries
+`mate-cli`, `mate-agent` — the whole agents directory — and `mate-cmd` on
+Windows); there is no separate installer. The agent definitions live at
+`agent-configs/opencode/agents/` and change in lockstep with the wrapper's
+tagged message protocol.
 
 State: `~/.local/state/mate/session.id` holds the shared session id.
 
@@ -33,7 +37,10 @@ State: `~/.local/state/mate/session.id` holds the shared session id.
 ```sh
 mate ask "what did I use git worktree for last week?"
 mate do "find the 10 largest files under ~/Downloads"
-mate reset           # start a fresh session next run
+mate lingo slump                    # dictionary entry
+mate lingo "affect vs effect"       # grammar
+mate lingo - < draft.txt            # natural rewrite via stdin
+mate reset                          # start a fresh session next run
 ```
 
 ## Design notes
@@ -58,6 +65,14 @@ mate reset           # start a fresh session next run
   after explicit `Y` confirmation, via `bash -c`.
 - **Python, stdlib only.** No third-party deps and no `jq`; NDJSON parsing
   uses the `json` module. Python 3 is already a required repo prerequisite.
+- **One-shot lingo.** `mate lingo` runs `--agent lingo` with `persist=False`:
+  the shared session is neither read nor written, and every call is
+  independent. The agent infers the intent (word / grammar / rewrite) from
+  the input.
+- **Terminal-aware styling.** `do` output is structured into `─ section ─`
+  rules; on an interactive terminal headers are colored, agent replies get a
+  `─ mate ─` / `─ lingo ─` marker, errors are red. `NO_COLOR` disables all
+  styling, and markers are TTY-only so piped output stays clean.
 
 ## Configuration
 
@@ -81,7 +96,7 @@ opencode reads `%USERPROFILE%\.config\opencode`):
 ```json
 { "id": "mate-cli",   "source": "personal-tools/mate-cli/mate",     "method": "copy", "targets": [ "C:/Users/<you>/.local/bin/mate.py" ] },
 { "id": "mate-cmd",   "source": "personal-tools/mate-cli/mate.cmd", "method": "copy", "targets": [ "C:/Users/<you>/.local/bin/mate.cmd" ] },
-{ "id": "mate-agent", "source": "agent-configs/opencode/agents/mate.md", "method": "copy", "targets": [ "C:/Users/<you>/.config/opencode/agents/mate.md" ] }
+{ "id": "mate-agent", "source": "agent-configs/opencode/agents",    "method": "copy", "targets": [ "C:/Users/<you>/.config/opencode/agents" ] }
 ```
 
 Add `%USERPROFILE%\.local\bin` to PATH once, then `mate` works from cmd and
@@ -108,6 +123,8 @@ After deploying via `./manage.sh deploy --id mate-cli --id mate-agent`:
    feedback turn with `opencode export <session-id>`.
 3. `rework: make it human-readable sizes` path regenerates via `[REWORK]`.
 4. `mate reset` then a fresh turn recreates the session.
+5. `mate lingo slump` prints a dictionary entry; `mate lingo - < file`
+   rewrites; the mate session id file is unchanged by lingo calls.
 
 ## Evolution
 

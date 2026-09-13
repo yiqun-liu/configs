@@ -164,9 +164,12 @@ class WrapperIntegrationTest(unittest.TestCase):
     def test_do_flow_with_prose(self):
         proc = self.mate_cli_drain("do", "demo", input_text="Y\n")
         combined = proc.stdout + proc.stderr
+        self.assertIn("─ explanation", combined)
         self.assertIn("Prints a greeting", combined)
+        self.assertIn("─ command", combined)
         self.assertIn("hello-from-cmd", combined)
-        self.assertIn("── exit: 0", combined)
+        self.assertIn("─ output", combined)
+        self.assertIn("─ exit 0", combined)
         self.assertIn("mate: noted.", combined)
         self.assertIn(
             "[RESULT] exit=0; last output (tail): hello-from-cmd",
@@ -187,6 +190,33 @@ class WrapperIntegrationTest(unittest.TestCase):
         proc = self.mate_cli("reset")
         self.assertFalse((self.state / "session.id").exists())
         self.assertIn("session state cleared", proc.stdout)
+
+    def test_lingo_is_one_shot_and_never_touches_session(self):
+        self.state.mkdir(parents=True, exist_ok=True)
+        (self.state / "session.id").write_text("ses_keep\n")
+        proc = self.mate_cli("lingo", "slump")
+        self.assertEqual(proc.stdout.strip(), "the answer is 42")
+        self.assertEqual(
+            self.run_lines()[-1],
+            f"ARGS: run --format json --agent lingo --dir {self.home} --title lingo slump",
+        )
+        # The shared mate session is neither consumed nor overwritten.
+        self.assertEqual((self.state / "session.id").read_text(), "ses_keep\n")
+
+    def test_lingo_reads_stdin_dash(self):
+        proc = self.mate_cli("lingo", "-", input_text="piped text\n")
+        self.assertIn("the answer is 42", proc.stdout)
+        self.assertTrue(self.run_lines()[-1].endswith("piped text"))
+
+    def test_lingo_reads_piped_stdin_without_args(self):
+        proc = self.mate_cli("lingo", input_text="piped text\n")
+        self.assertIn("the answer is 42", proc.stdout)
+        self.assertTrue(self.run_lines()[-1].endswith("piped text"))
+
+    def test_lingo_no_input_errors(self):
+        proc = self.mate_cli("lingo")
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("usage: mate lingo", proc.stderr)
 
     def test_no_args_prints_usage(self):
         proc = self.mate_cli()

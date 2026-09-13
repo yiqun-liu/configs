@@ -8,6 +8,7 @@ One persistent global opencode session; each turn is a one-shot
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -36,6 +37,7 @@ usage:
   mate ask "question"        ask a question in the shared mate session
   mate do "task"             agent explains and proposes a shell command;
                               execute after confirmation
+  mate lingo "text"          one-shot language help (word/grammar/rewrite)
   mate reset                 forget the session (next run starts fresh)
 
 environment:
@@ -46,8 +48,46 @@ environment:
 """
 
 
+# --- output styling -----------------------------------------------------------
+
+RESET = "\033[0m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RED = "\033[31m"
+GREEN = "\033[32m"
+CYAN = "\033[36m"
+
+USE_COLOR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
+SECTION_WIDTH = (
+    shutil.get_terminal_size(fallback=(44, 24)).columns if USE_COLOR else 44
+)
+
+
+def paint(text, *codes):
+    if not USE_COLOR or not codes:
+        return text
+    return "".join(codes) + text + RESET
+
+
+def section(title, *codes):
+    """A full-width rule with an inline title: `─ title ─────`."""
+    lead = f"─ {title} "
+    rule = "─" * max(3, SECTION_WIDTH - len(lead))
+    return paint(lead + rule, *(codes or (BOLD,)))
+
+
+def answer_marker(name):
+    """TTY-only marker above an agent reply so it stands out from mate's own
+    messages; omitted when piped to keep output clean."""
+    if USE_COLOR:
+        print(section(name, CYAN, BOLD))
+
+
 def die(msg):
-    print(f"mate: {msg}", file=sys.stderr)
+    err_color = sys.stderr.isatty() and "NO_COLOR" not in os.environ
+    prefix = "\033[31m" if err_color else ""
+    suffix = "\033[0m" if err_color else ""
+    print(f"{prefix}mate: {msg}{suffix}", file=sys.stderr)
     sys.exit(1)
 
 
@@ -130,19 +170,22 @@ def first_session_id(ndjson):
 # --- opencode invocation --------------------------------------------------------
 
 
-def run_turn(prompt):
-    """Send one turn to the mate agent in the shared session; print the
-    assistant text. A stored session id that no longer exists is dropped and
-    the turn retried once in a fresh session."""
-    for _attempt in (1, 2):
-        call = [OPENCODE_BIN, "run", "--format", "json", "--agent", "mate", "--dir", MATE_DIR]
+def run_turn(prompt, agent="mate", persist=True):
+    """Send one turn to the given agent; print the assistant text. With
+    persist=True the turn runs in the shared session (a stored session id
+    that no longer exists is dropped and the turn retried once fresh).
+    With persist=False the turn is one-shot: session state is neither read
+    nor written."""
+    attempts = (1, 2) if persist else (1,)
+    for _attempt in attempts:
+        call = [OPENCODE_BIN, "run", "--format", "json", "--agent", agent, "--dir", MATE_DIR]
         if MATE_MODEL:
             call += ["--model", MATE_MODEL]
-        sid = session_id()
+        sid = session_id() if persist else ""
         if sid:
             call += ["--session", sid]
         else:
-            call += ["--title", "mate"]
+            call += ["--title", agent]
 
         try:
             proc = subprocess.run(
@@ -160,12 +203,12 @@ def run_turn(prompt):
 
         new_sid = first_session_id(ndjson)
         if new_sid:
-            if new_sid != sid:
+            if persist and new_sid != sid:
                 save_session_id(new_sid)
             return extract_text(ndjson)
 
         # No sessionID in output: the stored session is gone or the run failed.
-        if sid:
+        if persist and sid:
             print("mate: stored session not found, starting a new one", file=sys.stderr)
             reset_session()
             continue
@@ -177,7 +220,20 @@ def run_turn(prompt):
 
 
 def cmd_ask(question):
+    answer_marker("mate")
     print(run_turn(f"[ASK] {question}"))
+
+
+def cmd_lingo(args):
+    text = " ".join(args)
+    if text == "-":
+        text = sys.stdin.read().strip()
+    elif not text and not sys.stdin.isatty():
+        text = sys.stdin.read().strip()
+    if not text:
+        die('usage: mate lingo "text" (or pipe text: mate lingo -)')
+    answer_marker("lingo")
+    print(run_turn(text, agent="lingo", persist=False))
 
 
 def cmd_do(task):
@@ -185,19 +241,21 @@ def cmd_do(task):
     while True:
         prose, cmd = split_reply(run_turn(tagged))
         if not cmd:
-            print("mate: reply contained no fenced bash block:", file=sys.stderr)
+            print(paint("mate: reply contained no fenced bash block:", RED), file=sys.stderr)
             print(prose, file=sys.stderr)
             try:
-                resp = input("rework feedback (Ctrl-C to abort): ")
+                resp = input(paint("rework feedback (Ctrl-C to abort): ", DIM))
             except EOFError:
                 die("aborted")
             tagged = f"[REWORK] Your previous reply had no bash block. {resp}"
             continue
         if prose:
-            print(prose)
-        print(f"\n── proposed command ──\n{cmd}\n─────────────────────")
+            print(section("explanation"))
+            print(prose + "\n")
+        print(section("command"))
+        print(cmd + "\n")
         try:
-            resp = input("execute? [Y=yes | rework: <feedback> | other=abort] ")
+            resp = input(paint("execute? [Y=yes | rework: <feedback> | other=abort] ", DIM))
         except EOFError:
             die("aborted")
         if resp.lower() in ("y", "yes"):
@@ -218,14 +276,15 @@ def cmd_do(task):
         die("bash not found for execution (set OPENCODE_GIT_BASH_PATH?)")
     out = proc.stdout.rstrip("\n")
 
+    print(section("output"))
     if out:
         print(out)
-    print(f"── exit: {proc.returncode} ──")
+    print(section(f"exit {proc.returncode}", GREEN if proc.returncode == 0 else RED))
 
     # Feed the outcome back so the assistant can self-correct on the next turn.
     ack = run_turn(f"[RESULT] exit={proc.returncode}; last output (tail): {out[-500:]}")
     if ack:
-        print(f"mate: {ack.splitlines()[0]}")
+        print(paint(f"mate: {ack.splitlines()[0]}", DIM))
     sys.exit(proc.returncode)
 
 
@@ -243,9 +302,11 @@ def main(argv):
             cmd_ask(arg)
         else:
             cmd_do(arg)
+    elif cmd == "lingo":
+        cmd_lingo(argv[1:])
     elif cmd == "reset":
         reset_session()
-        print("mate: session state cleared")
+        print(paint("mate: session state cleared", DIM))
     elif cmd in ("-h", "--help", "help", ""):
         print(USAGE)
     else:
