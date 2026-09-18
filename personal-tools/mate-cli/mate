@@ -5,9 +5,11 @@ One persistent global opencode session; each turn is a one-shot
 `opencode run`. All state lives in ~/.local/state/mate.
 """
 
+import datetime
 import json
 import os
 import re
+import shlex
 import shutil
 import socket
 import subprocess
@@ -24,6 +26,10 @@ MATE_DEBUG = os.environ.get("MATE_DEBUG", "")
 MATE_PORT = os.environ.get("MATE_PORT", "")
 MATE_SERVER = os.environ.get("MATE_SERVER", "1").lower() not in ("0", "false", "no")
 MATE_START_TIMEOUT = float(os.environ.get("MATE_START_TIMEOUT", "15"))
+if "OPENCODE_CONFIG_DIR" not in os.environ:
+    os.environ["OPENCODE_CONFIG_DIR"] = str(
+        Path(os.path.realpath(__file__)).parent
+    )
 # Records the lazy server's port, or -1 after a failed boot (breaker marker).
 # Spec path is /tmp/mate_server_port; fall back to the system temp dir only
 # where /tmp does not exist (Windows).
@@ -38,11 +44,15 @@ STATE_DIR = Path(
 )
 SESSION_FILE = STATE_DIR / "session.id"
 
-# The `do` executor: Git Bash on Windows (same env var opencode itself uses),
-# plain bash elsewhere.
-BASH_BIN = os.environ.get("OPENCODE_GIT_BASH_PATH") or "bash"
+# The `do` executor: PowerShell on Windows (pwsh preferred, stock Windows
+# PowerShell as fallback), plain bash elsewhere. MATE_SHELL overrides the
+# binary (on Windows it must accept -Command, i.e. be a PowerShell).
+if os.name == "nt":
+    DO_SHELL = os.environ.get("MATE_SHELL") or shutil.which("pwsh") or "powershell"
+else:
+    DO_SHELL = os.environ.get("MATE_SHELL") or "bash"
 
-FENCE_RE = re.compile(r"^```(bash|sh|shell|zsh)?[ \t]*$")
+FENCE_RE = re.compile(r"^```(bash|sh|shell|zsh|powershell|pwsh|ps1|ps)?[ \t]*$")
 
 USAGE = """mate — personal assistant backed by opencode
 
@@ -57,8 +67,11 @@ usage:
 environment:
   MATE_MODEL   model override, passed as --model (e.g. "anthropic/claude-...")
   MATE_DIR     directory the global session lives in (default $HOME)
-  MATE_DEBUG   if set, raw NDJSON of the last turn is copied to this path
+  MATE_DEBUG   if set, enables timestamped debug lines on stderr and
+               copies the last turn's raw NDJSON to this path
   OPENCODE_BIN opencode binary (default "opencode")
+  MATE_SHELL   shell that runs `do` commands (bash; pwsh/powershell on
+               Windows)
   MATE_PORT    fixed port for the lazy server (default: auto-picked, recorded
                in /tmp/mate_server_port; -1 marks a failed boot and skips
                server use until `mate stop` clears it)
@@ -87,18 +100,18 @@ def paint(text, *codes):
     return "".join(codes) + text + RESET
 
 
-def section(title, *codes):
-    """A full-width rule with an inline title: `─ title ─────`."""
+def print_section(title, *codes):
+    """Print a full-width rule with an inline title: `─ title ─────`."""
     lead = f"─ {title} "
     rule = "─" * max(3, SECTION_WIDTH - len(lead))
-    return paint(lead + rule, *(codes or (BOLD,)))
+    print(paint(lead + rule, *(codes or (BOLD,))))
 
 
-def answer_marker(name):
+def print_answer_marker(name):
     """TTY-only marker above an agent reply so it stands out from mate's own
     messages; omitted when piped to keep output clean."""
     if USE_COLOR:
-        print(section(name, CYAN, BOLD))
+        print_section(name, CYAN, BOLD)
 
 
 def die(msg):
@@ -109,10 +122,18 @@ def die(msg):
     sys.exit(1)
 
 
+def debug(msg):
+    """Timestamped, marked debug line to stderr; shown when MATE_DEBUG is set."""
+    if not MATE_DEBUG:
+        return
+    stamp = datetime.datetime.now().isoformat(timespec="seconds")
+    print(f"mate[debug] {stamp} {msg}", file=sys.stderr)
+
+
 # --- session state -------------------------------------------------------------
 
 
-def session_id():
+def read_session_id():
     try:
         return SESSION_FILE.read_text().strip()
     except FileNotFoundError:
@@ -134,63 +155,70 @@ def reset_session():
 # --- transcript parsing ---------------------------------------------------------
 
 
-def extract_text(ndjson):
-    """Concatenate completed assistant text parts, in order, deduplicated by
-    part id (latest text wins, ordered by first appearance)."""
-    first_seq = {}
-    best = {}
-    for seq, line in enumerate(ndjson.splitlines()):
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
+def parse_ndjson(ndjson):
+    """Parse newline-delimited JSON into a list of event dicts."""
+    events = []
+    for line in ndjson.splitlines():
+        if not line.startswith("{"):
             continue
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            pass  # defensive: a "{"-prefixed line can be truncated mid-write
+    return events
+
+
+def extract_text(events):
+    """Concatenate completed assistant text parts from event list, in order,
+    deduplicated by part id (latest text overwrites, ordered by first
+    appearance).
+
+    Assumptions:
+    1. there may be text-events with the same part IDs. last one wins.
+    2. text-events with different part IDs are ordered by their first occurrence order.
+    Part ids are opaque strings with not clear documentation.
+    """
+    texts = {}
+    ordered_part_ids = []
+    for event in events:
         if event.get("type") != "text":
             continue
         part = event.get("part") or {}
         if (part.get("time") or {}).get("end") is None:
             continue
-        pid = part.get("id")
-        first_seq.setdefault(pid, seq)
-        if pid not in best or seq >= best[pid][0]:
-            best[pid] = (seq, part.get("text", ""))
-    ordered = sorted(best.items(), key=lambda kv: first_seq[kv[0]])
-    return "\n\n".join(text for _, (_, text) in ordered)
+        part_id = part.get("id")
+        if part_id not in texts:
+            ordered_part_ids.append(part_id)
+        texts[part_id] = part.get("text", "")
+    return "\n\n".join(texts[part_id] for part_id in ordered_part_ids)
 
 
-def split_reply(reply):
+def split_do_cmd_reply(reply):
     """Split a reply into (prose, command) around the first fenced block."""
     prose_lines, cmd_lines = [], []
     fence = 0
     for line in reply.splitlines():
-        if FENCE_RE.match(line):
+        if fence < 2 and FENCE_RE.match(line):
             fence += 1
             if fence == 2:
                 break
             continue
-        if fence == 0:
-            prose_lines.append(line)
-        else:
+        if fence == 1:
             cmd_lines.append(line)
+        else:
+            prose_lines.append(line)
     return "\n".join(prose_lines).strip(), "\n".join(cmd_lines)
 
 
-def first_session_id(ndjson):
-    for line in ndjson.splitlines():
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
+def extract_first_session_id(events):
+    for event in events:
         if event.get("sessionID") is not None:
             return event["sessionID"]
     return ""
 
 
-def first_error(ndjson):
-    for line in ndjson.splitlines():
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
+def extract_first_error(events):
+    for event in events:
         if event.get("type") == "error":
             err = event.get("error") or {}
             msg = (err.get("data") or {}).get("message") or err.get("message") or str(err)
@@ -205,15 +233,19 @@ def read_port_file():
     """Port recorded by a previous run, -1 failure marker, or None."""
     try:
         return int(PORT_FILE.read_text().strip())
-    except (FileNotFoundError, ValueError, OSError):
-        return None
+    except FileNotFoundError:
+        return None  # expected on first run
+    except (ValueError, OSError):
+        return None  # defensive: mate writes only ints here, but the file
+        # can be corrupted or replaced
 
 
 def write_port_file(value):
     try:
         PORT_FILE.write_text(f"{value}\n")
     except OSError:
-        pass
+        pass  # defensive: a full or read-only temp dir; mate still runs,
+        # only the port record is lost
 
 
 def configured_port():
@@ -325,7 +357,7 @@ def run_turn(prompt, agent="mate", persist=True):
         call = [OPENCODE_BIN, "run", "--format", "json", "--agent", agent, "--dir", MATE_DIR]
         if MATE_MODEL:
             call += ["--model", MATE_MODEL]
-        sid = session_id() if persist else ""
+        sid = read_session_id() if persist else ""
         if sid:
             call += ["--session", sid]
         else:
@@ -335,6 +367,7 @@ def run_turn(prompt, agent="mate", persist=True):
             call += ["--port", str(attach)]
 
         try:
+            debug(f"exec: {shlex.join(call + [prompt])}")
             proc = subprocess.run(
                 call + [prompt],
                 stdin=subprocess.DEVNULL,
@@ -345,13 +378,15 @@ def run_turn(prompt, agent="mate", persist=True):
             die("opencode not found in PATH (set OPENCODE_BIN?)")
 
         ndjson = "\n".join(line for line in proc.stdout.splitlines() if line.startswith("{"))
+        events = parse_ndjson(ndjson)
         if MATE_DEBUG:
             Path(MATE_DEBUG).write_text(ndjson)
+            debug(f"dumped {len(events)} NDJSON events to {MATE_DEBUG}")
 
-        new_sid = first_session_id(ndjson)
+        new_sid = extract_first_session_id(events)
         if new_sid:
-            text = extract_text(ndjson)
-            err = first_error(ndjson)
+            text = extract_text(events)
+            err = extract_first_error(events)
             if not text and err:
                 # The turn failed upstream (provider/proxy error); never
                 # report an empty reply as success.
@@ -366,6 +401,8 @@ def run_turn(prompt, agent="mate", persist=True):
             reset_session()
             continue
         die("opencode run produced no output")
+    # Defensive; unreachable: every loop pass returns text or dies, and the
+    # retry path (persist attempt 1) always terminates on the second pass.
     die("opencode run failed twice")
 
 
@@ -373,39 +410,43 @@ def run_turn(prompt, agent="mate", persist=True):
 
 
 def cmd_ask(question):
-    answer_marker("mate")
+    print_answer_marker("mate")
     print(run_turn(f"[ASK] {question}"))
 
 
 def cmd_lingo(args):
-    text = " ".join(args)
-    if text == "-":
-        text = sys.stdin.read().strip()
-    elif not text and not sys.stdin.isatty():
-        text = sys.stdin.read().strip()
-    if not text:
+    all_args = " ".join(args)
+
+    consume_tty_stdin = all_args == '-'
+    consume_redirect_stdin = not all_args and not sys.stdin.isatty()
+    if consume_tty_stdin or consume_redirect_stdin:
+        all_args = sys.stdin.read().strip()
+    if not all_args:
         die('usage: mate lingo "text" (or pipe text: mate lingo -)')
-    answer_marker("lingo")
-    print(run_turn(text, agent="lingo", persist=False))
+    print_answer_marker("lingo")
+    print(run_turn(all_args, agent="lingo", persist=False))
 
 
 def cmd_do(task):
     tagged = f"[DO] {task}"
     while True:
-        prose, cmd = split_reply(run_turn(tagged))
+        prose, cmd = split_do_cmd_reply(run_turn(tagged))
+        if not cmd and prose.strip().startswith("ABORT"):
+            print(paint(prose.strip(), RED), file=sys.stderr)
+            sys.exit(1)
         if not cmd:
-            print(paint("mate: reply contained no fenced bash block:", RED), file=sys.stderr)
+            print(paint("mate: reply contained no fenced command block:", RED), file=sys.stderr)
             print(prose, file=sys.stderr)
             try:
                 resp = input(paint("rework feedback (Ctrl-C to abort): ", DIM))
             except EOFError:
                 die("aborted")
-            tagged = f"[REWORK] Your previous reply had no bash block. {resp}"
+            tagged = f"[REWORK] Your previous reply had no command block. {resp}"
             continue
         if prose:
-            print(section("explanation"))
+            print_section("explanation")
             print(prose + "\n")
-        print(section("command"))
+        print_section("command")
         print(cmd + "\n")
         try:
             resp = input(paint("execute? [Y=yes | rework: <feedback> | other=abort] ", DIM))
@@ -419,20 +460,42 @@ def cmd_do(task):
         die("aborted")
 
     try:
-        proc = subprocess.run(
-            [BASH_BIN, "-c", cmd],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
+        # Capture to a file, not a pipe: subprocess.run with stdout=PIPE
+        # waits for EOF, so a backgrounded child inheriting the pipe fd
+        # would hang mate forever. A file is drained only by us after the
+        # shell exits; stray children writing to it are harmless.
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as out_f:
+            if os.name == "nt":
+                # Exit with the last native command's status ($LASTEXITCODE)
+                # when nonzero, else 1 when the statement failed ($? false):
+                # failing cmdlets never set $LASTEXITCODE, so a bare
+                # `exit $LASTEXITCODE` would report success. $ok captures $?
+                # before the if-statement resets it (PS 5.1 and pwsh).
+                status = (
+                    "$ok = $?; "
+                    "if ($LASTEXITCODE) { exit $LASTEXITCODE } "
+                    "elseif (-not $ok) { exit 1 } else { exit 0 }"
+                )
+                argv = [DO_SHELL, "-Command", cmd + "\n" + status]
+            else:
+                argv = [DO_SHELL, "-c", cmd]
+            proc = subprocess.run(
+                argv,
+                stdin=subprocess.DEVNULL,
+                stdout=out_f,
+                stderr=subprocess.STDOUT,
+            )
+            out_f.flush()
+            out_f.seek(0)
+            out = out_f.read()
     except FileNotFoundError:
-        die("bash not found for execution (set OPENCODE_GIT_BASH_PATH?)")
-    out = proc.stdout.rstrip("\n")
+        die(f"{DO_SHELL} not found for execution (set MATE_SHELL?)")
+    out = out.rstrip("\n")
 
-    print(section("output"))
+    print_section("output")
     if out:
         print(out)
-    print(section(f"exit {proc.returncode}", GREEN if proc.returncode == 0 else RED))
+    print_section(f"exit {proc.returncode}", GREEN if proc.returncode == 0 else RED)
 
     # Feed the outcome back so the assistant can self-correct on the next turn.
     ack = run_turn(f"[RESULT] exit={proc.returncode}; last output (tail): {out[-500:]}")
@@ -445,27 +508,27 @@ def cmd_do(task):
 
 
 def main(argv):
-    cmd = argv[0] if argv else ""
-    if cmd in ("ask", "do"):
+    subcmd = argv[0] if argv else ""
+    if subcmd in ("ask", "do"):
         if len(argv) < 2:
-            noun = "question" if cmd == "ask" else "task"
-            die(f'usage: mate {cmd} "{noun}"')
+            noun = "question" if subcmd == "ask" else "task"
+            die(f'usage: mate {subcmd} "{noun}"')
         arg = " ".join(argv[1:])
-        if cmd == "ask":
+        if subcmd == "ask":
             cmd_ask(arg)
         else:
             cmd_do(arg)
-    elif cmd == "lingo":
+    elif subcmd == "lingo":
         cmd_lingo(argv[1:])
-    elif cmd == "reset":
+    elif subcmd == "reset":
         reset_session()
         print(paint("mate: session state cleared", DIM))
-    elif cmd == "stop":
+    elif subcmd == "stop":
         cmd_stop()
-    elif cmd in ("-h", "--help", "help", ""):
+    elif subcmd in ("-h", "--help", "help", ""):
         print(USAGE)
     else:
-        die(f"unknown subcommand: {cmd} (try: mate help)")
+        die(f"unknown subcommand: {subcmd} (try: mate help)")
     return 0
 
 
@@ -475,7 +538,7 @@ if __name__ == "__main__":
         try:
             stream.reconfigure(errors="replace")
         except Exception:
-            pass
+            pass  # defensive: a replaced stdout/stderr may lack reconfigure
     try:
         sys.exit(main(sys.argv[1:]))
     except KeyboardInterrupt:

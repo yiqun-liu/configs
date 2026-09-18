@@ -1,0 +1,6 @@
+# opencode writes runtime artifacts here while using this directory as
+# OPENCODE_CONFIG_DIR (the wrapper resolves into it via link deployment).
+node_modules
+package.json
+package-lock.json
+bun.lock

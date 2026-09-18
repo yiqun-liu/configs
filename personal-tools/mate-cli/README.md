@@ -22,13 +22,20 @@ macOS, Linux, and Windows.
 | ------------ | --------------------------------------- | -------------------------- |
 | `mate`       | `~/.local/bin/mate`                     | python wrapper             |
 | `mate.cmd`   | `%USERPROFILE%\.local\bin\mate.cmd`     | cmd/PowerShell shim (Win)  |
-| `agents/`    | `~/.config/opencode/agents/`            | mate + lingo agent prompts |
+| `agents/`    | (in-repo, via `OPENCODE_CONFIG_DIR`)    | mate + lingo agent prompts |
 
-All deploy through the repo config manager (`tracked-configs.json` entries
-`mate-cli`, `mate-agent` — the whole agents directory — and `mate-cmd` on
-Windows); there is no separate installer. The agent definitions live at
-`agent-configs/opencode/agents/` and change in lockstep with the wrapper's
-tagged message protocol.
+The wrapper installs through the repo config manager (`tracked-configs.json`
+entry `mate-cli`, plus `mate-cmd` on Windows); there is no separate installer.
+The `mate-cli` entry must use `method: link`: the wrapper resolves its own
+real path and sets `OPENCODE_CONFIG_DIR` to that directory for every
+opencode subprocess, so the in-repo `agents/` beside the wrapper is the
+agent source — mate and lingo are available to `mate` calls but never
+appear in regular interactive opencode sessions (which keep reading
+`~/.config/opencode`; the scoping holds as long as no agents are re-added
+there, since opencode merges config sources). The agent definitions change
+in lockstep with the wrapper's tagged message protocol, and opencode writes
+runtime artifacts (`node_modules/`, `package.json`, lockfiles) into the
+directory — all gitignored.
 
 State: `~/.local/state/mate/session.id` holds the shared session id.
 
@@ -69,7 +76,8 @@ mate stop                           # dispose the lazily started server
 - **Safety split.** The agent may inspect (`read`/`glob`/`grep` allowed,
   including outside the project dir) but never executes: `bash`, `edit`,
   `task`, `question`, `skill` are denied. Execution happens only in `mate`
-  after explicit `Y` confirmation, via `bash -c`.
+  after explicit `Y` confirmation, via the platform shell (`bash -c`;
+  PowerShell `-Command` on Windows).
 - **Python, stdlib only.** No third-party deps and no `jq`; NDJSON parsing
   uses the `json` module. Python 3 is already a required repo prerequisite.
 - **One-shot lingo.** `mate lingo` runs `--agent lingo` with `persist=False`:
@@ -87,9 +95,9 @@ mate stop                           # dispose the lazily started server
 | ------------------------ | ---------- | -------------------------------------------------------------- |
 | `MATE_MODEL`             | unset      | passed as `--model provider/model`                             |
 | `MATE_DIR`               | home dir   | session directory                                              |
-| `MATE_DEBUG`             | unset      | copy last turn's NDJSON here                                   |
+| `MATE_DEBUG`             | unset      | timestamped debug on stderr + copy last turn's NDJSON here     |
 | `OPENCODE_BIN`           | `opencode` | opencode binary path                                           |
-| `OPENCODE_GIT_BASH_PATH` | `bash`     | bash used to run `do` commands (Windows: point at Git Bash)    |
+| `MATE_SHELL`             | platform   | shell for `do` commands (bash; pwsh/powershell on Windows)     |
 | `MATE_PORT`              | auto-pick  | fixed port for the lazy server                                 |
 | `MATE_SERVER`            | `1`        | set `0` to force one-shot runs without a server                |
 
@@ -98,8 +106,8 @@ mate stop                           # dispose the lazily started server
 The model resolves in this order (first match wins):
 
 1. `MATE_MODEL` env var (passed as `--model provider/model`)
-2. The agent's frontmatter `model:` (see the commented line in
-   `lingo.md`; `mate.md` leaves it unset)
+2. The agent's frontmatter `model:` (each agent file carries a commented
+   placeholder; uncomment to pin)
 3. Top-level `model` in `~/.config/opencode/opencode.json`
 4. opencode's implicit default (first authenticated provider)
 
@@ -121,21 +129,29 @@ first two can be reduced without touching the shared global config:
 ## Windows
 
 Requirements: Python 3 on PATH (`python`), opencode (`npm install -g
-opencode-ai`), and Git Bash (the `do` executor; set
-`OPENCODE_GIT_BASH_PATH` if `bash` on PATH resolves to WSL).
+opencode-ai`), and PowerShell (`pwsh` preferred, stock `powershell` as
+fallback). `mate.py` must be a symlink into this repository, not a copy:
+the wrapper resolves its real path to find `agents/`, so a copied wrapper
+has no agents beside it. File symlinks may need privilege elevation (see
+the repo root `AGENTS.md`).
 
-`tracked-configs.json` entries on a Windows machine (method `copy`; native
-opencode reads `%USERPROFILE%\.config\opencode`):
+`tracked-configs.json` entries on a Windows machine (native opencode
+reads `%USERPROFILE%\.config\opencode`):
 
 ```json
-{ "id": "mate-cli",   "source": "personal-tools/mate-cli/mate",     "method": "copy", "targets": [ "C:/Users/<you>/.local/bin/mate.py" ] },
-{ "id": "mate-cmd",   "source": "personal-tools/mate-cli/mate.cmd", "method": "copy", "targets": [ "C:/Users/<you>/.local/bin/mate.cmd" ] },
-{ "id": "mate-agent", "source": "agent-configs/opencode/agents",    "method": "copy", "targets": [ "C:/Users/<you>/.config/opencode/agents" ] }
+{ "id": "mate-cli",
+  "source": "personal-tools/mate-cli/mate",
+  "method": "link",
+  "targets": [ "C:/Users/<you>/.local/bin/mate.py" ] },
+{ "id": "mate-cmd",
+  "source": "personal-tools/mate-cli/mate.cmd",
+  "method": "copy",
+  "targets": [ "C:/Users/<you>/.local/bin/mate.cmd" ] }
 ```
 
-Add `%USERPROFILE%\.local\bin` to PATH once, then `mate` works from cmd and
-PowerShell via the shim. `.gitattributes` keeps `mate` LF-only and `mate.cmd`
-CRLF-only so both platforms' checkouts stay runnable.
+Add `%USERPROFILE%\.local\bin` to PATH once, then `mate` works from cmd
+and PowerShell via the shim. `.gitattributes` keeps `mate` LF-only and
+`mate.cmd` CRLF-only so both platforms' checkouts stay runnable.
 
 ## Verification checklist
 
@@ -148,7 +164,7 @@ python3 tests/test_mate.py        # parsing unit tests + fake-opencode flow
 (The integration cases need a POSIX shell for the fake binary and skip on
 Windows; run the live checklist there instead.)
 
-After deploying via `./manage.sh deploy --id mate-cli --id mate-agent`:
+After deploying via `./manage.sh deploy --id mate-cli`:
 
 1. `mate ask "2+2?"` twice, then `opencode session list` shows one "mate"
    session with both turns.

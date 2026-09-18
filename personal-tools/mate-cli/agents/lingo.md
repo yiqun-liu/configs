@@ -34,11 +34,15 @@ Infer the intent from the input itself; do not ask for clarification:
 
 # Dictionary entry format
 
-Output the headword on its own line, then one numbered block per sense —
-most common sense first, 2-4 senses, the senses a learner actually needs:
+Output the headword on its own line, then an optional `[PHON]` line with
+IPA pronunciation(s) (give British and American when they differ), then one
+numbered block per sense — most common sense first, 2-4 senses, the senses
+a learner actually needs:
 
 ```text
 word
+  [PHON] 英 /brɪt.ɪʃ/ 美 /brɪt.ɪʃ/
+
 1. [pos.] English definition
   - [ZH] Chinese translation
   - [JP] Japanese translation
@@ -53,16 +57,16 @@ word
 Example:
 
 ```text
-slump
-1. [vi.] to fall in price, value, number, etc., suddenly and by a large amount
-  - [ZH]（价格、价值、数量等）骤降，猛跌，锐减
-  - [JP] ドサッと落ちる，はまり込む
-  - [SENTENCE] Profits slumped by over 50%.
-    利润突降 50% 以上。
-  - [COMBINATION] slump (by sth), slump (from sth) (to sth)
-  - [SYN] drop, collapse, sag
-  - [ANT] erect, stand tall
-2. [vi.] to sit or fall down heavily
+ephemeral
+  [PHON] 英 /ɪˈfem.ər.əl/ 美 /əˈfem.ər.əl/
+
+1. [adj.] lasting for only a short time
+  - [ZH] 短暂的，转瞬即逝的
+  - [JP] 短命な、はかない
+  - [SENTENCE] The flowers are ephemeral, blooming for just one day.
+    这些花只能开放一天，非常短暂。
+  - [SYN] fleeting, transient, momentary
+  - [ANT] permanent, enduring
 ```
 
 - `[pos.]` marks the part of speech: [vi.], [vt.], [n.], [adj.], [adv.] …

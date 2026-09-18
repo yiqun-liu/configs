@@ -92,14 +92,6 @@
       ]
     },
     {
-      "id": "mate-agent",
-      "source": "agent-configs/opencode/agents",
-      "method": "link",
-      "targets": [
-        "~/.config/opencode/agents"
-      ]
-    },
-    {
       "id": "mate-cli",
       "source": "personal-tools/mate-cli/mate",
       "method": "link",

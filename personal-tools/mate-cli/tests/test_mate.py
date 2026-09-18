@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from importlib.machinery import SourceFileLoader
@@ -39,25 +40,27 @@ class ExtractTextTest(unittest.TestCase):
         self.mate = load_mate()
 
     def test_dedupe_keep_last_ordered_by_first_appearance(self):
-        nd = "\n".join(
-            [
-                json.dumps({"type": "step_start", "sessionID": "s", "part": {"id": "p0"}}),
-                json.dumps({"type": "text", "sessionID": "s", "part": {"id": "p1", "text": "partial", "time": {"start": 1}}}),
-                json.dumps({"type": "text", "sessionID": "s", "part": {"id": "p1", "text": "final answer", "time": {"start": 1, "end": 2}}}),
-                json.dumps({"type": "text", "sessionID": "s", "part": {"id": "p2", "text": "part two", "time": {"start": 1, "end": 2}}}),
-                json.dumps({"type": "text", "sessionID": "s", "part": {"id": "p1", "text": "final answer", "time": {"start": 1, "end": 2}}}),
-            ]
+        events = self.mate.parse_ndjson(
+            "\n".join(
+                [
+                    json.dumps({"type": "step_start", "sessionID": "s", "part": {"id": "p0"}}),
+                    json.dumps({"type": "text", "sessionID": "s", "part": {"id": "p1", "text": "partial", "time": {"start": 1}}}),
+                    json.dumps({"type": "text", "sessionID": "s", "part": {"id": "p1", "text": "final answer", "time": {"start": 1, "end": 2}}}),
+                    json.dumps({"type": "text", "sessionID": "s", "part": {"id": "p2", "text": "part two", "time": {"start": 1, "end": 2}}}),
+                    json.dumps({"type": "text", "sessionID": "s", "part": {"id": "p1", "text": "final answer", "time": {"start": 1, "end": 2}}}),
+                ]
+            )
         )
-        self.assertEqual(self.mate.extract_text(nd), "final answer\n\npart two")
+        self.assertEqual(self.mate.extract_text(events), "final answer\n\npart two")
 
     def test_empty(self):
-        self.assertEqual(self.mate.extract_text(""), "")
-        self.assertEqual(self.mate.extract_text("not json\n"), "")
+        self.assertEqual(self.mate.extract_text([]), "")
+        self.assertEqual(self.mate.extract_text(self.mate.parse_ndjson("not json\n")), "")
 
-    def test_first_session_id(self):
-        line = json.dumps({"type": "text", "sessionID": "ses_9", "part": {"id": "p1"}})
-        self.assertEqual(self.mate.first_session_id(line), "ses_9")
-        self.assertEqual(self.mate.first_session_id(""), "")
+    def test_extract_first_session_id(self):
+        events = [{"type": "text", "sessionID": "ses_9", "part": {"id": "p1"}}]
+        self.assertEqual(self.mate.extract_first_session_id(events), "ses_9")
+        self.assertEqual(self.mate.extract_first_session_id([]), "")
 
 
 class SplitReplyTest(unittest.TestCase):
@@ -67,22 +70,38 @@ class SplitReplyTest(unittest.TestCase):
     def test_prose_block_trailing_dropped(self):
         reply = "intro\nsecond line\n```bash\ndu -sh |\nsort -h\n```\nafter prose"
         self.assertEqual(
-            self.mate.split_reply(reply),
+            self.mate.split_do_cmd_reply(reply),
             ("intro\nsecond line", "du -sh |\nsort -h"),
         )
 
     def test_bare_fence(self):
-        self.assertEqual(self.mate.split_reply("intro\n```\nls -la\n```"), ("intro", "ls -la"))
+        self.assertEqual(self.mate.split_do_cmd_reply("intro\n```\nls -la\n```"), ("intro", "ls -la"))
 
     def test_block_only(self):
-        self.assertEqual(self.mate.split_reply("```bash\nls\n```"), ("", "ls"))
+        self.assertEqual(self.mate.split_do_cmd_reply("```bash\nls\n```"), ("", "ls"))
 
     def test_no_fence(self):
-        self.assertEqual(self.mate.split_reply("just text"), ("just text", ""))
+        self.assertEqual(self.mate.split_do_cmd_reply("just text"), ("just text", ""))
 
     def test_first_block_wins(self):
         reply = "```bash\nfirst\n```\ntext\n```bash\nsecond\n```"
-        self.assertEqual(self.mate.split_reply(reply)[1], "first")
+        self.assertEqual(self.mate.split_do_cmd_reply(reply)[1], "first")
+
+    def test_powershell_fence(self):
+        reply = "Explains the listing.\n```powershell\nGet-ChildItem | Measure-Object\n```"
+        self.assertEqual(
+            self.mate.split_do_cmd_reply(reply),
+            ("Explains the listing.", "Get-ChildItem | Measure-Object"),
+        )
+
+    def test_powershell_fence_aliases(self):
+        self.assertEqual(self.mate.split_do_cmd_reply("```pwsh\nls\n```")[1], "ls")
+        self.assertEqual(self.mate.split_do_cmd_reply("```ps\nls\n```")[1], "ls")
+        self.assertEqual(self.mate.split_do_cmd_reply("```ps1\nls\n```")[1], "ls")
+
+    def test_first_block_wins_across_languages(self):
+        reply = "```powershell\nfirst\n```\ntext\n```bash\nsecond\n```"
+        self.assertEqual(self.mate.split_do_cmd_reply(reply)[1], "first")
 
 
 FAKE_OPENCODE = """#!/usr/bin/env bash
@@ -98,7 +117,13 @@ for a in "$@"; do [[ "$prev" == "--session" ]] && sid="$a"; prev="$a"; done
 if [[ "$sid" == "ses_dead" ]]; then echo "Session not found" >&2; exit 1; fi
 case "$prompt" in
   "[DO]"*|"[REWORK]"*)
-    printf '%s\\n' '{"type":"text","sessionID":"ses_fake123","part":{"id":"p1","text":"Prints a greeting from the fake command.\\n```bash\\necho hello-from-cmd\\n```","time":{"start":1,"end":2}}}' ;;
+    if [[ "$prompt" == *"ABORT"* ]]; then
+      printf '%s\\n' '{"type":"text","sessionID":"ses_fake123","part":{"id":"p1","text":"ABORT: the target file does not exist","time":{"start":1,"end":2}}}'
+    elif [[ "$prompt" == *"BACKGROUND"* ]]; then
+      printf '%s\\n' '{"type":"text","sessionID":"ses_fake123","part":{"id":"p1","text":"Runs a command with a background child.\\n```bash\\necho started; sleep 30 &\\n```","time":{"start":1,"end":2}}}'
+    else
+      printf '%s\\n' '{"type":"text","sessionID":"ses_fake123","part":{"id":"p1","text":"Prints a greeting from the fake command.\\n```bash\\necho hello-from-cmd\\n```","time":{"start":1,"end":2}}}'
+    fi ;;
   "[RESULT]"*)
     printf '%s\\n' '{"type":"text","sessionID":"ses_fake123","part":{"id":"p1","text":"noted.","time":{"start":1,"end":2}}}' ;;
   *)
@@ -218,6 +243,24 @@ class WrapperIntegrationTest(unittest.TestCase):
             "[RESULT] exit=0; last output (tail): hello-from-cmd",
             self.fake_log.read_text(),
         )
+
+    def test_do_abort_exits_nonzero(self):
+        proc = self.mate_cli("do", "ABORT task")
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("ABORT: the target file does not exist", proc.stderr)
+        self.assertNotIn("execute?", proc.stderr + proc.stdout)
+        # Session is saved before the abort check (run_turn persists it).
+        self.assertEqual((self.state / "session.id").read_text().strip(), "ses_fake123")
+
+    def test_do_background_child_does_not_hang(self):
+        t0 = time.monotonic()
+        proc = self.mate_cli_drain("do", "BACKGROUND task", input_text="Y\n")
+        elapsed = time.monotonic() - t0
+        self.assertEqual(proc.returncode, 0)
+        self.assertIn("started", proc.stdout + proc.stderr)
+        self.assertIn("─ exit 0", proc.stdout + proc.stderr)
+        self.assertLess(elapsed, 5, "subprocess.run waited on a pipe fd held "
+                        "by a background child instead of returning promptly")
 
     def test_dead_session_recreated(self):
         self.state.mkdir(parents=True, exist_ok=True)
