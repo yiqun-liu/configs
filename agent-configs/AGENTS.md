@@ -63,8 +63,8 @@ Create durable artifacts that describe the resulting system and follow the
 repository's local conventions.
 
 - In durable documents and code comments, describe the resulting system rather
-  than the history of the change. For example, write “B owns request parsing,”
-  not “request parsing moved from A to B.” Put transition notes in plans and
+  than the history of the change. For example, write "B owns request parsing,"
+  not "request parsing moved from A to B." Put transition notes in plans and
   commits.
 - Treat `.tmp/` as gitignored by default. Store non-durable artifacts and
   temporary documents under `.tmp/agent/`; never put durable source or

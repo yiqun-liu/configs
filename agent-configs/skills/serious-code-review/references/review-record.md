@@ -47,6 +47,37 @@ When applied, check the relevant concerns below.
   boundaries and failures; determinism; meaningful integration coverage at
   external contracts.
 
+## Interface state and representation
+
+Use this inventory when Structure or Architecture coverage is applied. It turns
+interface complexity into inspectable state contracts rather than a count of
+parameters or fields.
+
+```markdown
+| Interface | Owner | State | Lifetime | Invariants | Authority |
+| --- | --- | --- | --- | --- | --- |
+| | | | | | |
+```
+
+Review each important boundary through these state properties.
+
+- **Ownership:** Who creates, reads, changes, and ultimately owns each state
+  field?
+- **Lifecycle:** When is it valid, changed, expired, or released?
+- **Validity:** Which fields must occur together, exclude each other, or obey
+  an ordering, unit, or range constraint?
+- **Representation:** Are fields grouped by one purpose—domain state, control
+  state, transport metadata, error state, or derived/cache state—rather than
+  mixed ad hoc?
+- **Redundancy:** Is duplicate state a snapshot, cache, compatibility
+  projection, or independently authoritative fact? If so, are its source of
+  truth and synchronization or invalidation rule clear?
+
+Do not report size or redundancy alone. Report only an interface that permits an
+invalid combination, obscures ownership or an invariant, leaks an inappropriate
+representation, or leaves duplicate state without a justified authority and
+update rule.
+
 ## Independent checks
 
 Use this section only for user-selected independent review.
@@ -74,10 +105,33 @@ record that as a strength.
 
 ## Findings
 
-Report only confirmed, in-scope findings; a clean result is valid.
+Report only confirmed, in-scope findings; a clean result is valid. Group
+findings by the broadest scope affected: Architecture, Structure, then
+Implementation quality. Omit empty groups and order findings by severity within
+each group. Place a conditional concern in the group it affects.
 
 ```markdown
-### [Severity] [short finding title]
+### Architecture
+
+#### [Severity] [short finding title]
+
+Location: [path:line or component]
+Impact: [who or what is affected]
+Evidence: [specific behavior, path, dependency, or missing invariant]
+Suggested direction: [concise, non-prescriptive correction]
+
+### Structure
+
+#### [Severity] [short finding title]
+
+Location: [path:line or component]
+Impact: [who or what is affected]
+Evidence: [specific behavior, path, dependency, or missing invariant]
+Suggested direction: [concise, non-prescriptive correction]
+
+### Implementation quality
+
+#### [Severity] [short finding title]
 
 Location: [path:line or component]
 Impact: [who or what is affected]

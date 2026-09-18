@@ -44,39 +44,27 @@ report with its coverage and limits made explicit.
 - Read repository guidance and directly relevant documentation.
 - Record the requested focus and fixed project decisions. Treat those
   decisions as constraints, not defects.
+- Before inspection, ask the user to choose **Direct** or
+  **Independent/generative** review unless they already selected one. For a
+  target too broad for one coherent pass, also offer optional partitioned
+  coverage. Do not assume the user knows these forms exist.
 
 ## Procedure
 
 Apply the selected review coverage, then inspect and report only supported
 findings.
 
-### Establish coverage
-
-Select the lenses and conditional concerns that fit the target. Use
-[the review record](references/review-record.md) to mark each as applied or
-not applicable.
-
-- **Implementation quality** — behavior, failures, boundaries, resource use,
-  local efficiency, readability, and tests. Use for every source review.
-- **Structure** — responsibilities, interfaces, cohesion, local dependencies,
-  and component-level naming. Use when a cohesive module is in scope.
-- **Architecture** — module boundaries, dependency direction, cross-module
-  protocols, and system constraints. Use when the target spans modules.
-- **Conditional concerns** — concurrency, performance, and testing when the
-  target or its documented context makes them relevant.
-
-A finding in one lens may limit confidence in another. State that condition
-and its evidence.
-
 ### Select review mode
 
-Choose the mode the user requested; direct review is the default.
+Ask the user to choose a review form before inspection unless they already
+selected one. Do not silently default to a form.
 
-- **Direct** — inspect the target and report the selected coverage. Use when
-  the user wants one thorough review.
-- **Independent** — ask a fresh subagent to review from a self-contained
-  brief, then verify its claims. Use only when the user explicitly requests
-  independent or generative review.
+- **Direct** — one reviewer inspects the target and reports the selected
+  coverage; no subagent is used.
+- **Independent/generative** — ask a fresh subagent to review from a
+  self-contained brief, then verify its claims. Explain that it adds limited
+  alternative generation, adversarial conditions, and a self-containedness
+  check.
 
 For independent review:
 
@@ -90,11 +78,71 @@ For independent review:
 - Verify every reported claim against the target before presenting it. Report
   disagreements as questions or omit them.
 
+### Establish coverage
+
+Select the lenses and conditional concerns that fit the target. Use
+[the review record](references/review-record.md) to mark each as applied or
+not applicable.
+
+- **Implementation quality** — behavior, failures, boundaries, resource use,
+  local efficiency, readability, and tests. Use for every source review.
+- **Structure** — responsibilities, interface and data-representation design,
+  cohesion, local dependencies, and component-level naming. Use when a
+  cohesive module is in scope.
+- **Architecture** — module boundaries, dependency direction, cross-module
+  protocols, boundary-state ownership, and system constraints. Use when the
+  target spans modules.
+- **Conditional concerns** — concurrency, performance, and testing when the
+  target or its documented context makes them relevant.
+
+A finding in one lens may limit confidence in another. State that condition
+and its evidence.
+
+### Inspect interface state and representation
+
+When Structure or Architecture applies, use the interface-state inventory in
+[the review record](references/review-record.md#interface-state-and-representation)
+to reconstruct important boundaries before judging them.
+
+- Map each boundary's purpose and owner, carried state, permitted mutation,
+  lifetime, and required invariants.
+- Assess representation through one state-oriented axis: ownership, lifecycle,
+  validity, grouping, and redundancy.
+- Treat parameter count, field count, and duplicated data only as signals.
+  Report a finding only when an interface permits an invalid state, hides
+  ownership or a required invariant, leaks an inappropriate representation, or
+  leaves a duplicate without a justified source of truth and synchronization
+  rule.
+- Accept redundancy that deliberately creates a stable snapshot, avoids
+  measured hot-path recomputation, supports compatibility, or carries
+  independently authoritative data when its ownership and update policy are
+  clear.
+
+### Partition large targets
+
+Offer partitioned coverage only when the target spans modules or exceeds a
+single coherent inspection pass. Use it only if the user selects it.
+
+- Partition by module, directory, or component so every source file is in
+  exactly one partition, and inspect every partition.
+- Give each partition its own subagent with a self-contained brief: the
+  partition's files, selected coverage, user focus, constraints, and the
+  documentation needed to understand it.
+- Do not fan out cross-partition lenses; architecture and cross-module
+  concerns need the whole target in one pass.
+- Merge partition findings into one review record. Deduplicate, keep the
+  strongest evidence for each finding, and verify each claim against the
+  target before reporting it.
+
 ### Inspect
 
 Inspect the selected coverage against the target, direct dependencies, and
 documented conventions.
 
+- For each applied lens, read only its matching portion of [the bug-class
+  index](references/bug-classes.md). Treat entries as hypotheses to test, not
+  findings: report one only with a reachable path, violated contract or
+  invariant, and concrete impact.
 - Distinguish confirmed findings from questions, assumptions, and strengths.
 - Do not invent requirements, recommend unrelated refactoring, or infer a
   defect merely from absent documentation.
@@ -103,13 +151,20 @@ documented conventions.
 
 ### Report
 
-Present results in severity order using
-[the review record](references/review-record.md).
+Present results by affected scope using
+[the review record](references/review-record.md): architecture first, then
+structure, then implementation quality. Within each scope, order findings by
+severity.
 
 - Every finding names its location, impact, evidence, and a concise suggested
   direction.
-- Use severity for impact: Critical must be fixed; High should be fixed;
-  Medium merits tracking or fixing; Low is optional and never blocks.
+- Put a conditional concern with the broadest scope it affects—for example, a
+  cross-module concurrency protocol under Architecture, or a local allocation
+  cost under Implementation quality.
+- Use severity for impact, not fix effort: Critical must be fixed; High
+  should be fixed; Medium merits tracking or fixing; Low is optional and
+  never blocks. Do not raise severity for an imagined future change; state a
+  supported reachability condition or record uncertainty as a question.
 - Separate confirmed findings from questions, assumptions, strengths, and
   omitted coverage.
 
@@ -123,4 +178,6 @@ Finish when the user has the review report and its known limitations.
 ## References
 
 Use [the review record](references/review-record.md) to enforce coverage and
-the finding format.
+the finding format. Use the relevant portion of [the bug-class
+index](references/bug-classes.md) during inspection to prime evidence-backed
+defect hypotheses.
