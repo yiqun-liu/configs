@@ -16,6 +16,11 @@ Conventions for AI agents working in this directory.
   Scoping also relies on `~/.config/opencode/agents` staying absent:
   opencode merges config sources, so agents there would load too. No
   agent deploy entry exists.
+- `opencode.json` in this directory rides the same `OPENCODE_CONFIG_DIR`
+  merge to disable MCP servers for mate calls only. Keep its `mcp` block
+  in sync with the global MCP set; interactive sessions are unaffected
+  (they never set the env var) except an opencode session started with
+  cwd inside this directory, which reads the file as project config.
 - opencode writes runtime artifacts (`node_modules/`, `package.json`,
   `package-lock.json`, `bun.lock`) into that directory; `.gitignore`
   keeps them out of the repo.

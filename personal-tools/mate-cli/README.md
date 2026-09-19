@@ -23,6 +23,7 @@ macOS, Linux, and Windows.
 | `mate`       | `~/.local/bin/mate`                     | python wrapper             |
 | `mate.cmd`   | `%USERPROFILE%\.local\bin\mate.cmd`     | cmd/PowerShell shim (Win)  |
 | `agents/`    | (in-repo, via `OPENCODE_CONFIG_DIR`)    | mate + lingo agent prompts |
+| `opencode.json` | (in-repo, via `OPENCODE_CONFIG_DIR`) | disables MCP servers for mate calls |
 
 The wrapper installs through the repo config manager (`tracked-configs.json`
 entry `mate-cli`, plus `mate-cmd` on Windows); there is no separate installer.
@@ -119,10 +120,12 @@ per call, use `MATE_MODEL`.
 Per-turn cost = opencode boot + MCP server startup + model/network. The
 first two can be reduced without touching the shared global config:
 
-- MCP servers can be disabled per project. mate sessions run with
-  `--dir $HOME`, so `~/.opencode/opencode.json` (tracked as the
-  `opencode-home-project` entry) scopes MCP startup down to mate
-  sessions only; set `"enabled": false` per server there.
+- MCP servers are disabled for mate calls by the in-repo `opencode.json`
+  beside the wrapper: the wrapper points `OPENCODE_CONFIG_DIR` at its own
+  directory, and opencode merges that directory's `mcp` block (`"enabled":
+  false` per server) over the global config. Interactive sessions never set
+  `OPENCODE_CONFIG_DIR`, so they keep the full global MCP set; add new
+  servers to that block when they are added globally.
 - Runs attach to the lazily started server (see design notes), so the
   remaining per-turn cost is the `opencode run` CLI boot plus the model.
 
