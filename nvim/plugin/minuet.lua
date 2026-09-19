@@ -1,0 +1,56 @@
+-- plugin/minuet.lua — AI ghost-text completion (minuet-ai.nvim).
+--
+-- minuet-ai fetches LLM completions and renders them as virtual text
+-- (ghost text) at the cursor. Auto-trigger mode: suggestions appear on
+-- typing pauses (minuet debounces and cancels stale requests itself);
+-- we only map explicit accept/dismiss keys — no invoke/cycle keys.
+--
+-- Deliberately NO nvim-cmp involvement: cmp stays the symbol/snippet
+-- menu engine (see plugin/cmp.lua), minuet draws ghost text beside it.
+-- Mixing minuet into cmp's sources with a manual-only trigger does not
+-- work (cmp never re-filters late async items and resets the source on
+-- the next keystroke) — the virtualtext frontend is upstream's
+-- recommended path and the only one verified here.
+--
+-- Provider: DeepSeek FIM (fill-in-the-middle) via its OpenAI-compatible
+-- endpoint. FIM sends prefix AND suffix context, so suggestions fit the
+-- middle of a file, not just appends. Requires $DEEPSEEK_API_KEY in the
+-- environment (minuet reads the env-var NAME below, never the value).
+
+local config = require('tools.config')
+
+vim.pack.add({
+  { src = config.github_url('milanglacier/minuet-ai.nvim'), version = 'main' },
+})
+
+require('minuet').setup({
+  provider = 'openai_fim_compatible',
+  provider_options = {
+    openai_fim_compatible = {
+      end_point = 'https://api.deepseek.com/beta/completions',
+      api_key = 'DEEPSEEK_API_KEY',
+      model = 'deepseek-flash',
+      name = 'Deepseek', -- display name in notifications
+    },
+  },
+  virtualtext = {
+    -- Auto-trigger in every filetype. Requests fire on typing pauses;
+    -- cost/latency dials if ever needed: narrow this list (e.g.
+    -- { 'python', 'lua' }) or cap tokens via provider optional fields.
+    auto_trigger_ft = { '*' },
+
+    -- Show ghost text while the cmp menu is open (default false hides
+    -- it, which would suppress suggestions during most typing since
+    -- cmp auto-opens).
+    show_on_completion_menu = true,
+
+    -- Explicit accept only — no next/prev keymaps, so the first (top)
+    -- suggestion is what shows. Alt-modifier family avoids cmp's Ctrl
+    -- keys and the tmux-reserved Alt keys.
+    keymap = {
+      accept = '<M-y>',
+      accept_line = '<M-a>',
+      dismiss = '<M-e>',
+    },
+  },
+})

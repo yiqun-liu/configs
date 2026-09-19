@@ -24,6 +24,7 @@ nvim/
 │   ├── cmp.lua           # nvim-cmp + 5 sources
 │   ├── lspconfig.lua     # nvim-lspconfig + clangd/pylsp/rust_analyzer + LspAttach keymaps
 │   ├── luasnip.lua       # LuaSnip + PackChanged build hook (jsregexp)
+│   ├── minuet.lua        # AI ghost-text completion (DeepSeek FIM, auto-trigger)
 │   ├── telescope.lua     # plenary + telescope (deps grouped)
 │   ├── toggleterm.lua    # floating terminal
 │   └── treesitter.lua    # nvim-treesitter (main) + FileType autocmd → vim.treesitter.start
@@ -186,6 +187,15 @@ Preset defaults (`<C-n>`/`<C-p>`/`<C-y>`/`<C-e>`) and cmdline (`:`/`/`/`?`)
 completion use `cmp.mapping.preset.*` — see `:h cmp`. In NORMAL mode, use
 `K` for LSP hover (not a completion key).
 
+**AI ghost text** (`plugin/minuet.lua`) — auto-triggered on typing pauses
+(DeepSeek FIM, needs `$DEEPSEEK_API_KEY`), rendered beside the cmp menu:
+
+| Key | Mode | Action |
+|---|:---:|---|
+| `<M-y>` | i | accept suggestion |
+| `<M-a>` | i | accept first line only |
+| `<M-e>` | i | dismiss suggestion |
+
 **Fuzzy finder** (`plugin/telescope.lua`):
 
 | Key | Action |
@@ -287,6 +297,7 @@ configured, clones fail with a git auth error — `vim.pack` uses libuv spawn
 | `nvim-treesitter` (main) | parser installer for built-in `vim.treesitter` |
 | `nvim-lspconfig` | LSP server configs (used by `vim.lsp.config`) |
 | `nvim-cmp` + 5 sources | completion (0.12's `vim.lsp.completion` lacks snippets/path/buffer) |
+| `minuet-ai.nvim` | AI ghost-text completion (DeepSeek FIM via `openai_fim_compatible`; requires `$DEEPSEEK_API_KEY`) |
 | `LuaSnip` + `cmp_luasnip` | snippet engine; bridge into nvim-cmp |
 | `telescope.nvim` + `plenary.nvim` | fuzzy finder + its dependency |
 | `bufferline.nvim` + `nvim-web-devicons` | buffer tabline + its icon dependency |
