@@ -33,6 +33,22 @@ require('minuet').setup({
       name = 'Deepseek', -- display name in notifications
     },
   },
+
+  -- Boundary-duplication trim: DeepSeek FIM sometimes restarts the
+  -- completion slightly before the cursor, restating text that was just
+  -- typed. Both filter lengths default to 0 for FIM providers (on the
+  -- assumption the model sees prefix+suffix and behaves); re-enable the
+  -- client-side trim of candidate text overlapping pre/post-cursor
+  -- context. Only overlaps >= the threshold at the head/tail are cut.
+  before_cursor_filter_length = 15,
+  after_cursor_filter_length = 15,
+
+  -- Narrow the stale-context window: keystrokes typed while a request is
+  -- in flight are invisible to it, and the throttle window (default
+  -- 1000ms) suppresses refetch during that time. 600ms trades a few more
+  -- parallel FIM calls for fresher context.
+  throttle = 600,
+
   virtualtext = {
     -- Auto-trigger in every filetype. Requests fire on typing pauses;
     -- cost/latency dials if ever needed: narrow this list (e.g.
