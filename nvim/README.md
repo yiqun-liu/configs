@@ -195,6 +195,8 @@ completion use `cmp.mapping.preset.*` — see `:h cmp`. In NORMAL mode, use
 | `<M-y>` | i | accept suggestion |
 | `<M-a>` | i | accept first line only |
 | `<M-e>` | i | dismiss suggestion |
+| `<M-n>` | i | cycle to next suggestion (or invoke manually) |
+| `<M-p>` | i | cycle to previous suggestion |
 
 **Fuzzy finder** (`plugin/telescope.lua`):
 

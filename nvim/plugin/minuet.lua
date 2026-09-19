@@ -3,7 +3,7 @@
 -- minuet-ai fetches LLM completions and renders them as virtual text
 -- (ghost text) at the cursor. Auto-trigger mode: suggestions appear on
 -- typing pauses (minuet debounces and cancels stale requests itself);
--- we only map explicit accept/dismiss keys — no invoke/cycle keys.
+-- accept/dismiss/cycle keys are mapped explicitly (see keymap below).
 --
 -- Deliberately NO nvim-cmp involvement: cmp stays the symbol/snippet
 -- menu engine (see plugin/cmp.lua), minuet draws ghost text beside it.
@@ -50,13 +50,17 @@ require('minuet').setup({
     -- cmp auto-opens).
     show_on_completion_menu = true,
 
-    -- Explicit accept only — n_completions stays at its default 1, so
-    -- there is nothing to cycle and no next/prev keymaps. Alt-modifier
-    -- family avoids cmp's Ctrl keys and the tmux-reserved Alt keys.
+    -- n_completions defaults to 3, so every trigger already fetches
+    -- several alternatives (parallel FIM requests); M-n/M-p cycle through
+    -- them and double as manual invoke when nothing is shown yet.
+    -- Alt-modifier family avoids cmp's Ctrl keys and the tmux-reserved
+    -- Alt keys.
     keymap = {
       accept = '<M-y>',
       accept_line = '<M-a>',
       dismiss = '<M-e>',
+      next = '<M-n>',
+      prev = '<M-p>',
     },
   },
 })
