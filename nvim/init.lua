@@ -225,10 +225,12 @@ vim.keymap.set('n', '<leader>rm', function()
   vim.cmd.bdelete({ bang = true })
 end)
 
--- `<leader>load` reloads every buffer from disk, discarding unsaved
--- edits. `:bufdo` runs the following command in every buffer; `e!`
--- means "edit with bang" = "reload from disk, throw away changes".
-vim.keymap.set('n', '<leader>load', '<cmd>:bufdo e!<cr>')
+-- `<leader>load` checks every buffer for changes made outside Neovim
+-- (e.g. a git branch switch or another editor). Buffers whose file
+-- changed on disk and have NO local edits are reloaded; buffers with
+-- unsaved changes are left untouched (a forced reset-to-disk would be
+-- `:bufdo e!`, which discards edits — intentionally not mapped).
+vim.keymap.set('n', '<leader>load', '<cmd>checktime<cr>')
 
 -- Split navigation using Alt+H/J/K/L (instead of the default Ctrl-W
 -- h/j/k/l). The RHS strings are built-in Vim normal-mode commands:
