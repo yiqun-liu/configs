@@ -8,9 +8,6 @@ the index and the memo-tables.
 ## Why
 
 - Neovim 0.12 ships `vim.pack` — no third-party plugin manager to bootstrap.
-- The previous config accumulated tutorial copy-paste and orphaned plugins
-  (`codecompanion`, `minuet-ai` in the lockfile but no config). This rewrite
-  keeps only what's used.
 - `vim.pack` is intentionally minimal: no TUI, no dependency graph, no opts
   merging. Each plugin is a self-contained file.
 
@@ -23,13 +20,13 @@ nvim/
 │   └── tools/
 │       └── config.lua    # shared module: git_scheme + github_url() helper
 ├── plugin/               # auto-sourced by Neovim at startup, alphabetically
-│   ├── treesitter.lua    # nvim-treesitter (main) + FileType autocmd → vim.treesitter.start
+│   ├── bufferline.lua    # nvim-web-devicons + bufferline (deps grouped)
+│   ├── cmp.lua           # nvim-cmp + 5 sources
 │   ├── lspconfig.lua     # nvim-lspconfig + clangd/pylsp/rust_analyzer + LspAttach keymaps
 │   ├── luasnip.lua       # LuaSnip + PackChanged build hook (jsregexp)
-│   ├── cmp.lua           # nvim-cmp + 5 sources
-│   ├── bufferline.lua    # nvim-web-devicons + bufferline (deps grouped)
 │   ├── telescope.lua     # plenary + telescope (deps grouped)
-│   └── toggleterm.lua    # floating terminal
+│   ├── toggleterm.lua    # floating terminal
+│   └── treesitter.lua    # nvim-treesitter (main) + FileType autocmd → vim.treesitter.start
 ```
 
 `vim.pack` writes a lockfile (`nvim-pack-lock.json`) at the deployed config
@@ -94,12 +91,19 @@ Install only for languages you edit. Per-server notes in
 
 ```bash
 # Quick test (no deploy). vim.pack installs to ~/.local/share/nvim/site/pack/core/opt/
-nvim -u /home/yiqun/code/configs/nvim/init.lua
+nvim -u ~/code/configs/nvim/init.lua
+#   Caveat: stdpath('config') stays ~/.config/nvim, so if this config is
+#   already deployed there, the deployed plugin/*.lua is sourced too and
+#   runs last (duplicate files: deployed copy wins). Use the isolated
+#   method below to test changes that must not be shadowed.
 
 # Fully isolated A/B against another nvim config (separate data dir):
-ln -s /home/yiqun/code/configs/nvim ~/.config/nvim-test
+ln -s ~/code/configs/nvim ~/.config/nvim-test
 NVIM_APPNAME=nvim-test nvim
 #   Config: ~/.config/nvim-test/   Data: ~/.local/share/nvim-test/
+#   The symlinked config dir means vim.pack writes its lockfile through
+#   it into the repo (untracked nvim-pack-lock.json). Use a copy instead
+#   if you don't want that.
 ```
 
 Deployed via the repo's config manager (see root `README.md`); once deployed
@@ -293,8 +297,6 @@ configured, clones fail with a git auth error — `vim.pack` uses libuv spawn
 | Plugin | Reason |
 |---|---|
 | `lazy.nvim` | replaced by built-in `vim.pack` |
-| `catppuccin` (plugin) | declared but colorscheme call was commented out — built-in catppuccin used instead |
-| `codecompanion.nvim` / `minuet-ai.nvim` | lockfile only, no config — orphans |
 
 ## vim.pack quick reference
 

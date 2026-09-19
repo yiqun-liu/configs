@@ -20,7 +20,7 @@ local config_dir = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h
 -- Put our config dir on the runtimepath (rtp) — but ONLY when it isn't
 -- already there. Neovim auto-adds `stdpath('config')` to rtp at startup,
 -- so:
---   - When deployed as ~/.config/nvim/ (or via NVIM_APPNAME=nvim-pack):
+--   - When deployed as ~/.config/nvim/ (or via NVIM_APPNAME=nvim-test):
 --     stdpath('config') == config_dir, the prepend is redundant, skip it.
 --   - When loaded with `nvim -u /path/to/this/init.lua` for testing:
 --     stdpath('config') is still ~/.config/nvim/ (the -u flag only changes
@@ -248,9 +248,9 @@ vim.keymap.set('n', '<A-,>', '<C-w>>')
 
 -- Buffer navigation.
 --
--- Note: the <S-h>/<S-l> "go to previous/next buffer" keymaps used to
--- live here, but they're now defined in plugin/bufferline.lua so they
--- can use bufferline's sorted order (not vim's buffer-stack order).
+-- <S-h>/<S-l> (previous/next buffer) are defined in
+-- plugin/bufferline.lua so they use bufferline's sorted order rather
+-- than vim's buffer-stack order. <leader>q closes the current buffer.
 vim.keymap.set('n', '<leader>q', '<cmd>bdelete<cr>')
 
 -- GUI-editor style bindings:

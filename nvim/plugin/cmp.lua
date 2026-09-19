@@ -18,7 +18,7 @@
 -- time. This is satisfied automatically by Neovim's alphabetical
 -- plugin/ sourcing: luasnip.lua runs AFTER cmp.lua alphabetically, but
 -- cmp.lua only calls `require('luasnip')` inside the `snippet.expand`
--- closure (line ~24 below), which fires at user time (when a snippet
+-- callback below, which fires at user time (when a snippet
 -- is actually being expanded), NOT at module load time. So the load
 -- order is fine; the dependency just isn't visible from cmp.lua's
 -- imports. If you ever reorganize plugin/luasnip.lua, keep this in
