@@ -39,14 +39,20 @@ require('minuet').setup({
     -- { 'python', 'lua' }) or cap tokens via provider optional fields.
     auto_trigger_ft = { '*' },
 
+    -- Telescope's prompt buffer has filetype 'TelescopePrompt', so the
+    -- '*' wildcard above would enable ghost text (and API calls) inside
+    -- every picker's prompt. Excluding it keeps pickers like <C-p>
+    -- (find_files) AI-free.
+    auto_trigger_ignore_ft = { 'TelescopePrompt' },
+
     -- Show ghost text while the cmp menu is open (default false hides
     -- it, which would suppress suggestions during most typing since
     -- cmp auto-opens).
     show_on_completion_menu = true,
 
-    -- Explicit accept only — no next/prev keymaps, so the first (top)
-    -- suggestion is what shows. Alt-modifier family avoids cmp's Ctrl
-    -- keys and the tmux-reserved Alt keys.
+    -- Explicit accept only — n_completions stays at its default 1, so
+    -- there is nothing to cycle and no next/prev keymaps. Alt-modifier
+    -- family avoids cmp's Ctrl keys and the tmux-reserved Alt keys.
     keymap = {
       accept = '<M-y>',
       accept_line = '<M-a>',
