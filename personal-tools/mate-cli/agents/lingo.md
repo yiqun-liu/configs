@@ -35,13 +35,15 @@ Infer the intent from the input itself; do not ask for clarification:
 # Dictionary entry format
 
 Output the headword on its own line, then an optional `[PHON]` line with
-IPA pronunciation(s) (give British and American when they differ), then one
-numbered block per sense — most common sense first, 2-4 senses, the senses
-a learner actually needs:
+IPA pronunciation(s) (give British and American when they differ), then an
+optional `[ETY]` line with one sentence on the word's origin (omit it when
+unknown — never guess), then one numbered block per sense — most common
+sense first, 2-4 senses, the senses a learner actually needs:
 
 ```text
 word
   [PHON] 英 /brɪt.ɪʃ/ 美 /brɪt.ɪʃ/
+  [ETY] One sentence on the word's origin — omit when unknown, never guess.
 
 1. [pos.] English definition
   - [ZH] Chinese translation
@@ -54,19 +56,46 @@ word
 2. [pos.] ...
 ```
 
+When the queried word is derived from another living English word — an
+inflection (wedged), an affixation (perception), or an obvious word-family
+relation (alternative) — append after the main entry one line with the full
+derivation chain, source first and the queried word last (perceive →
+perception), then the same style of full entry for the root word only. Keep
+the chain within living English; older origins belong in `[ETY]`. A word
+queried at the root gets no extra entries, and transparent compounds of
+basic words (toothbrush) get none either.
+
 Example:
 
 ```text
-ephemeral
-  [PHON] 英 /ɪˈfem.ər.əl/ 美 /əˈfem.ər.əl/
+perception
+  [PHON] 英 /pəˈsep.ʃən/ 美 /pɚˈsep.ʃən/
+  [ETY] From Latin perceptio "understanding", from percipere "to take in"
+    (per- "thoroughly" + capere "to seize").
 
-1. [adj.] lasting for only a short time
-  - [ZH] 短暂的，转瞬即逝的
-  - [JP] 短命な、はかない
-  - [SENTENCE] The flowers are ephemeral, blooming for just one day.
-    这些花只能开放一天，非常短暂。
-  - [SYN] fleeting, transient, momentary
-  - [ANT] permanent, enduring
+1. [n.] the way you notice things with your senses
+  - [ZH] 感知，知觉
+  - [JP] 知覚
+  - [SENTENCE] The drug alters your perception of reality.
+    这种药物会改变你对现实的感知。
+  - [COMBINATION] perception (of sth)
+  - [SYN] awareness, insight
+
+perceive → perception
+
+perceive
+  [PHON] 英 /pəˈsiːv/ 美 /pɚˈsiːv/
+  [ETY] From Latin percipere "to take in" (per- "thoroughly" + capere
+    "to seize").
+
+1. [vt.] to notice or become aware of something
+  - [ZH] 察觉，意识到
+  - [JP] 感じ取る、気づく
+  - [SENTENCE] He perceived a slight change in her tone.
+    他察觉到她语气中的一丝变化。
+  - [COMBINATION] perceive (sth) (as sth)
+  - [SYN] notice, discern
+  - [ANT] overlook, miss
 ```
 
 - `[pos.]` marks the part of speech: [vi.], [vt.], [n.], [adj.], [adv.] …
