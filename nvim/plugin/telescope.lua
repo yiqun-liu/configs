@@ -48,6 +48,13 @@ vim.keymap.set('n', '<leader>fh', builtin.help_tags, {})  -- search :help tags
 -- to repurpose.
 vim.keymap.set('n', '<C-p>', builtin.find_files, {})
 
+-- <leader>fa ("find all") searches every file, including hidden (dotfiles)
+-- and git-ignored ones. no_ignore stops the backend (fd/rg) from honoring
+-- .gitignore; hidden surfaces dotfiles like .env, .gitignore, .config.
+vim.keymap.set('n', '<leader>fa', function()
+  builtin.find_files({ hidden = true, no_ignore = true })
+end)
+
 -- <C-g> shows the file's name and path in vim by default; we override
 -- it with "find git-tracked files" (skips ignored files like build
 -- artifacts). Useful in repos with many untracked files.

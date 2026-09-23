@@ -204,6 +204,7 @@ completion use `cmp.mapping.preset.*` — see `:h cmp`. In NORMAL mode, use
 |---|---|
 | `<leader>ff` / `<leader>fg` / `<leader>fb` / `<leader>fh` | find files / live grep / buffers / help tags |
 | `<C-p>` | find files (alias; overrides redundant `k`) |
+| `<leader>fa` | find all files, including hidden and git-ignored (`fa` = find all) |
 | `<C-g>` | find git-tracked files |
 | `<leader>grep` | live grep (alias) |
 
