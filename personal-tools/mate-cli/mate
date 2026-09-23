@@ -368,11 +368,16 @@ def run_turn(prompt, agent="mate", persist=True):
 
         try:
             debug(f"exec: {shlex.join(call + [prompt])}")
+            # Decode as UTF-8 explicitly: opencode always emits UTF-8, and
+            # text=True alone would use the locale codec, crashing or
+            # mangling the JSON under a non-UTF-8 locale.
             proc = subprocess.run(
                 call + [prompt],
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
         except FileNotFoundError:
             die("opencode not found in PATH (set OPENCODE_BIN?)")
